@@ -4,17 +4,17 @@ import { CodeBlock } from "./code-block";
 import { PageIntro } from "./page-intro";
 import { useMmd } from "./mmd-provider";
 
-const quickStartCode = `import { MmdProvider, MmdPage } from "mmd-renderer";
+const quickStartCode = `git clone https://github.com/lusess123/mdd.git
+cd mdd
+bun install
+bun run dev
 
-export default function Products() {
-  return (
-    <MmdProvider>
-      <MmdPage model="Product" />
-    </MmdProvider>
-  );
-}`;
+# Website: http://localhost:3000
+# API:     http://localhost:8787`;
 
-const providerCode = `<MmdProvider
+const providerCode = `import { MmdProvider } from "@/components/mmd-provider";
+
+<MmdProvider
   api={{
     baseUrl: "https://api.example.com",
     timeoutMs: 8_000,
@@ -27,7 +27,7 @@ const providerCode = `<MmdProvider
   }}
   onError={reportError}
 >
-  <MmdPage model="Product" />
+  <App />
 </MmdProvider>`;
 
 const fieldCode = `registerFieldType({
@@ -49,21 +49,20 @@ const actionCode = `registerAction({
   success: { refresh: true },
 });`;
 
-const serverCode = `const app = new Hono<{ Bindings: Env }>();
+const serverCode = `import { createApp } from "./app";
 
-app.route("/api", createMmdRouter({
-  models: [Product],
-  repository: createProductRepository(env.DB),
-  actions: [publish, archive, duplicate],
-}));
+const app = createApp({
+  corsOrigin: "http://localhost:3000",
+});
 
 export default app;`;
 
 export function DocsContent() {
-  const { t } = useMmd();
+  const { config, t } = useMmd();
+  const openApiUrl = `${config.api.baseUrl.replace(/\/?api\/?$/, "")}/openapi.json`;
 
   const sections = [
-    ["01", "docs.quickStart", quickStartCode, "tsx"],
+    ["01", "docs.quickStart", quickStartCode, "shell"],
     ["02", "docs.provider", providerCode, "tsx"],
     ["03", "docs.fields", fieldCode, "typescript"],
     ["04", "docs.actions", actionCode, "typescript"],
@@ -76,6 +75,16 @@ export function DocsContent() {
         kicker={t("docs.kicker")}
         title={t("docs.title")}
         description={t("docs.description")}
+        actions={
+          <a
+            className="button button-primary"
+            href={openApiUrl}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {t("docs.openApi")} ↗
+          </a>
+        }
       />
 
       <div className="docs-layout">
@@ -93,6 +102,10 @@ export function DocsContent() {
         </aside>
 
         <div className="docs-body">
+          <section className="docs-notice">
+            <strong>{t("docs.noticeTitle")}</strong>
+            <span>{t("docs.noticeDescription")}</span>
+          </section>
           <section className="default-panel">
             <div className="default-panel-head">
               <div>

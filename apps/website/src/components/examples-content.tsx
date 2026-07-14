@@ -12,6 +12,7 @@ const examples: Array<{
   description: MessageKey;
   tags: string[];
   file: string;
+  href: string;
 }> = [
   {
     id: "01",
@@ -19,6 +20,7 @@ const examples: Array<{
     description: "examples.basicDescription",
     tags: ["Hono", "React", "CRUD"],
     file: "examples/basic",
+    href: "https://github.com/lusess123/mdd/tree/main/examples/basic",
   },
   {
     id: "02",
@@ -26,6 +28,7 @@ const examples: Array<{
     description: "examples.fieldsDescription",
     tags: ["money", "tags", "status", "image"],
     file: "examples/custom-fields",
+    href: "https://github.com/lusess123/mdd/tree/main/examples/custom-fields",
   },
   {
     id: "03",
@@ -33,6 +36,7 @@ const examples: Array<{
     description: "examples.actionsDescription",
     tags: ["publish", "archive", "duplicate"],
     file: "examples/custom-actions",
+    href: "https://github.com/lusess123/mdd/tree/main/examples/custom-actions",
   },
   {
     id: "04",
@@ -40,6 +44,7 @@ const examples: Array<{
     description: "examples.configDescription",
     tags: ["API", "auth", "router", "i18n"],
     file: "examples/custom-provider",
+    href: "https://github.com/lusess123/mdd/tree/main/examples/custom-provider",
   },
 ];
 
@@ -61,7 +66,13 @@ export function ExamplesContent() {
 
       <section className="example-list">
         {examples.map((example) => (
-          <article className="example-card" key={example.id}>
+          <a
+            className="example-card"
+            href={example.href}
+            key={example.id}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             <div className="example-index">{example.id}</div>
             <div className="example-main">
               <div className="example-title-row">
@@ -73,8 +84,8 @@ export function ExamplesContent() {
                 {example.tags.map((tag) => <code key={tag}>{tag}</code>)}
               </div>
             </div>
-            <Link className="example-open" href="/playground" aria-label={t(example.title)}>↗</Link>
-          </article>
+            <span aria-hidden="true" className="example-open">↗</span>
+          </a>
         ))}
       </section>
 

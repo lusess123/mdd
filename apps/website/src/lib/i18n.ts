@@ -23,7 +23,9 @@ export const zhCN = {
   "home.try": "在线体验",
   "home.start": "5 分钟接入",
   "home.install": "安装",
-  "home.installReady": "可运行",
+  "home.installReady": "本地可运行",
+  "home.current": "已实现",
+  "home.planned": "规划中",
   "home.preview": "预览",
   "home.apiConnected": "API 已连接",
   "home.pipeline": "从定义到运行结果",
@@ -58,6 +60,9 @@ export const zhCN = {
   "docs.contents": "目录",
   "docs.referenceStatus": "API 参考 · alpha",
   "docs.zeroConfig": "零配置",
+  "docs.noticeTitle": "当前状态",
+  "docs.noticeDescription": "快速开始、Provider 和 Hono 示例可在本仓库运行；自定义字段与 Action 注册 API 为下一阶段设计预览，尚未发布为 npm 包。",
+  "docs.openApi": "打开 OpenAPI",
   "examples.kicker": "可运行示例",
   "examples.title": "从最小闭环到业务扩展。",
   "examples.description": "每个例子都对齐在线效果、前端调用、服务端注册和真实请求。",
@@ -118,6 +123,12 @@ export const zhCN = {
   "errors.timeout": "请求超时，请稍后重试",
   "errors.network": "无法连接 API",
   "errors.unknown": "发生未知错误",
+  "errors.productNotFound": "商品不存在",
+  "errors.validation": "请求参数无效",
+  "errors.skuConflict": "SKU 已存在",
+  "errors.actionNotFound": "操作不存在",
+  "errors.notFound": "接口不存在",
+  "errors.internal": "服务端发生错误",
 } as const;
 
 export type MessageKey = keyof typeof zhCN;
@@ -152,7 +163,9 @@ const enUS: Messages = {
   "home.try": "Try the playground",
   "home.start": "Start in 5 minutes",
   "home.install": "Install",
-  "home.installReady": "ready",
+  "home.installReady": "runs locally",
+  "home.current": "implemented",
+  "home.planned": "planned",
   "home.preview": "Preview",
   "home.apiConnected": "API connected",
   "home.pipeline": "From definition to running UI",
@@ -187,6 +200,9 @@ const enUS: Messages = {
   "docs.contents": "Contents",
   "docs.referenceStatus": "API reference · alpha",
   "docs.zeroConfig": "Zero config",
+  "docs.noticeTitle": "Current status",
+  "docs.noticeDescription": "Quick start, Provider, and Hono examples run in this repository. The custom field and Action registration APIs are next-stage design previews and are not published npm packages yet.",
+  "docs.openApi": "Open OpenAPI",
   "examples.kicker": "Runnable examples",
   "examples.title": "From the smallest loop to business extensions.",
   "examples.description": "Every example aligns the live result, frontend call, server registration, and real request.",
@@ -247,6 +263,21 @@ const enUS: Messages = {
   "errors.timeout": "Request timed out. Try again.",
   "errors.network": "Cannot connect to the API",
   "errors.unknown": "An unknown error occurred",
+  "errors.productNotFound": "Product not found",
+  "errors.validation": "Invalid request",
+  "errors.skuConflict": "SKU already exists",
+  "errors.actionNotFound": "Action not found",
+  "errors.notFound": "Route not found",
+  "errors.internal": "Internal server error",
+};
+
+const apiErrorKeys: Record<string, MessageKey> = {
+  PRODUCT_NOT_FOUND: "errors.productNotFound",
+  VALIDATION_ERROR: "errors.validation",
+  SKU_CONFLICT: "errors.skuConflict",
+  ACTION_NOT_FOUND: "errors.actionNotFound",
+  NOT_FOUND: "errors.notFound",
+  INTERNAL_ERROR: "errors.internal",
 };
 
 export function createMessages(overrides: MessageOverrides = {}) {
@@ -264,6 +295,16 @@ export function translate(
   key: MessageKey,
 ): string {
   return messages[locale][key] ?? messages["zh-CN"][key] ?? key;
+}
+
+export function translateApiError(
+  messages: MessageCatalog,
+  locale: Locale,
+  code: string | undefined,
+  fallback: string,
+): string {
+  const key = code ? apiErrorKeys[code] : undefined;
+  return key ? translate(messages, locale, key) : fallback;
 }
 
 export function detectLocale(

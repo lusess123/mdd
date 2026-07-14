@@ -20,6 +20,7 @@ import {
 import {
   detectLocale,
   translate,
+  translateApiError,
   type Locale,
   type MessageKey,
 } from "../lib/i18n";
@@ -66,14 +67,18 @@ function joinUrl(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+async function parseResponse<T>(
+  response: Response,
+  resolveErrorMessage: (code: string | undefined, fallback: string) => string,
+): Promise<T> {
   const body = (await response.json().catch(() => undefined)) as
     | (T & ApiErrorBody)
     | undefined;
 
   if (!response.ok) {
+    const fallback = body?.error?.message ?? `HTTP ${response.status}`;
     throw new MmdRequestError(
-      body?.error?.message ?? `HTTP ${response.status}`,
+      resolveErrorMessage(body?.error?.code, fallback),
       response.status,
       body?.error?.code,
     );
@@ -126,10 +131,6 @@ export function MmdProvider({
       ),
     );
   }, [localeOverride]);
-
-  useEffect(() => {
-    document.documentElement.lang = locale;
-  }, [locale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -192,7 +193,9 @@ export function MmdProvider({
             headers,
             signal: controller.signal,
           });
-          return await parseResponse<T>(response);
+          return await parseResponse<T>(response, (code, fallback) =>
+            translateApiError(config.messages, locale, code, fallback),
+          );
         } finally {
           window.clearTimeout(timer);
         }
@@ -216,7 +219,7 @@ export function MmdProvider({
         setActiveRequests((count) => Math.max(0, count - 1));
       }
     },
-    [config, t],
+    [config, locale, t],
   );
 
   const navigate = useCallback(

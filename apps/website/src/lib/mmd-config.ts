@@ -56,13 +56,8 @@ export interface MmdConfigSources {
   component?: MmdConfigOverrides;
 }
 
-const defaultOnError = (error: Error) => {
-  console.error("[MMD]", error);
-};
-
-const defaultOnSuccess = (message: string) => {
-  console.info("[MMD]", message);
-};
+const defaultOnError = () => undefined;
+const defaultOnSuccess = () => undefined;
 
 export function resolveMmdConfig(
   sources: MmdConfigSources = {},

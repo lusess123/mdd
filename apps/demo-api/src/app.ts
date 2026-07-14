@@ -34,6 +34,16 @@ function normalizeOrigins(value: string | string[]): string | string[] {
 export function createApp(options: CreateAppOptions = {}) {
   const app = new OpenAPIHono<AppEnvironment>();
   const products = new InMemoryProductStore();
+  const actionHandlers = {
+    publish: (ids: string[]) =>
+      products.setStatus("publish", ids, "published"),
+    archive: (ids: string[]) =>
+      products.setStatus("archive", ids, "archived"),
+    duplicate: (ids: string[]) => products.duplicate(ids)
+  } satisfies Record<
+    string,
+    (ids: string[]) => ReturnType<InMemoryProductStore["duplicate"]>
+  >;
 
   app.use("*", async (context, next) => {
     const origin = normalizeOrigins(
@@ -182,7 +192,11 @@ export function createApp(options: CreateAppOptions = {}) {
   );
   app.post("/api/actions/:action", async (context) => {
     const action = context.req.param("action");
-    if (action !== "publish" && action !== "archive" && action !== "duplicate") {
+    const handler = Object.hasOwn(actionHandlers, action)
+      ? actionHandlers[action as keyof typeof actionHandlers]
+      : undefined;
+
+    if (!handler) {
       return context.json(
         { error: { code: "ACTION_NOT_FOUND", message: "Action not found" } },
         404
@@ -198,14 +212,7 @@ export function createApp(options: CreateAppOptions = {}) {
       );
     }
 
-    const result =
-      action === "duplicate"
-        ? products.duplicate(input.data.ids)
-        : products.setStatus(
-            action,
-            input.data.ids,
-            action === "publish" ? "published" : "archived"
-          );
+    const result = handler(input.data.ids);
     return result
       ? context.json(result)
       : context.json(

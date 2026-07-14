@@ -24,6 +24,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageIntro } from "./page-intro";
 import { useMmd } from "./mmd-provider";
+import {
+  frontendCodeFor,
+  modelCode,
+  serverCodeFor,
+  type CodeRequest,
+} from "./playground-snippets";
 import type { MessageKey } from "../lib/i18n";
 
 type ProductInput = Pick<
@@ -35,42 +41,14 @@ interface ProductResponse {
   data: Product;
 }
 
-interface RequestLog {
+interface RequestLog extends CodeRequest {
   id: number;
-  method: string;
-  path: string;
-  body?: unknown;
   response?: unknown;
   status: "pending" | "success" | "error";
   duration?: number;
 }
 
 type InspectorTab = "model" | "frontend" | "server" | "request" | "response";
-
-const modelCode = `defineModel({
-  name: "Product",
-  fields: {
-    cover: field.image(),
-    price: field.money({ currency: "CNY" }),
-    tags: field.tags(),
-    status: field.status(),
-  },
-  actions: ["publish", "archive", "duplicate"],
-});`;
-
-const frontendCode = `const { request } = useMmd();
-
-await request("/actions/publish", {
-  method: "POST",
-  body: JSON.stringify({ ids: [product.id] }),
-});`;
-
-const serverCode = `actions.register("publish", async ({ ids, repository }) => {
-  return repository.updateMany(ids, {
-    status: "published",
-    updatedAt: new Date().toISOString(),
-  });
-});`;
 
 const statusColors: Record<ProductStatus, string> = {
   draft: "gold",
@@ -81,8 +59,20 @@ const statusColors: Record<ProductStatus, string> = {
 const defaultCover =
   "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=128&h=128&fit=crop";
 
+const emptyProduct: ProductInput = {
+  name: "",
+  sku: "",
+  cover: defaultCover,
+  price: 0,
+  tags: [],
+  status: "draft",
+  inventory: 0,
+};
+
 function json(value: unknown) {
-  return value ? JSON.stringify(value, null, 2) : "// No payload yet";
+  return value === undefined
+    ? "// No payload yet"
+    : JSON.stringify(value, null, 2);
 }
 
 export function PlaygroundContent() {
@@ -98,6 +88,7 @@ export function PlaygroundContent() {
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [logs, setLogs] = useState<RequestLog[]>([]);
+  const [selectedLogId, setSelectedLogId] = useState<number>();
   const [activeTab, setActiveTab] = useState<InspectorTab>("request");
 
   const trackedRequest = useCallback(
@@ -115,6 +106,7 @@ export function PlaygroundContent() {
         pendingLog,
         ...current,
       ].slice(0, 8));
+      setSelectedLogId(id);
 
       try {
         const response = await request<T>(path, {
@@ -184,28 +176,24 @@ export function PlaygroundContent() {
     void loadProducts("", undefined);
   }, [loadProducts]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    form.setFieldsValue(editing ?? emptyProduct);
+  }, [editing, form, modalOpen]);
+
   function openCreate() {
     setEditing(undefined);
-    form.setFieldsValue({
-      name: "",
-      sku: "",
-      cover: defaultCover,
-      price: 0,
-      tags: [],
-      status: "draft",
-      inventory: 0,
-    });
     setModalOpen(true);
   }
 
   function openEdit(product: Product) {
     setEditing(product);
-    form.setFieldsValue(product);
     setModalOpen(true);
   }
 
   async function saveProduct() {
-    const values = await form.validateFields();
+    const values = await form.validateFields().catch(() => undefined);
+    if (!values) return;
     setSaving(true);
     try {
       if (editing) {
@@ -220,23 +208,33 @@ export function PlaygroundContent() {
       notifySuccess(t("feedback.saved"));
       setModalOpen(false);
       await loadProducts(query, status);
+    } catch {
+      // MmdProvider already renders the localized error feedback.
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteProduct(product: Product) {
-    await trackedRequest<{ success: true }>("DELETE", `/products/${product.id}`);
-    notifySuccess(t("feedback.deleted"));
-    await loadProducts(query, status);
+    try {
+      await trackedRequest<{ success: true }>("DELETE", `/products/${product.id}`);
+      notifySuccess(t("feedback.deleted"));
+      await loadProducts(query, status);
+    } catch {
+      // MmdProvider already renders the localized error feedback.
+    }
   }
 
   async function runAction(action: string, product: Product) {
-    await trackedRequest<ActionResponse<Product>>("POST", `/actions/${action}`, {
-      ids: [product.id],
-    });
-    notifySuccess(t("feedback.actionDone"));
-    await loadProducts(query, status);
+    try {
+      await trackedRequest<ActionResponse<Product>>("POST", `/actions/${action}`, {
+        ids: [product.id],
+      });
+      notifySuccess(t("feedback.actionDone"));
+      await loadProducts(query, status);
+    } catch {
+      // MmdProvider already renders the localized error feedback.
+    }
   }
 
   const columns = useMemo<TableColumnsType<Product>>(
@@ -338,15 +336,16 @@ export function PlaygroundContent() {
     [loadProducts, locale, notifySuccess, query, status, t, trackedRequest],
   );
 
-  const latestLog = logs[0];
+  const selectedLog =
+    logs.find((log) => log.id === selectedLogId) ?? logs[0];
   const inspectorCode: Record<InspectorTab, string> = {
     model: modelCode,
-    frontend: frontendCode,
-    server: serverCode,
-    request: latestLog
-      ? `${latestLog.method} ${config.api.baseUrl}${latestLog.path}\n\n${json(latestLog.body)}`
+    frontend: frontendCodeFor(selectedLog),
+    server: serverCodeFor(selectedLog),
+    request: selectedLog
+      ? `${selectedLog.method} ${config.api.baseUrl}${selectedLog.path}\n\n${json(selectedLog.body)}`
       : t("playground.emptyLog"),
-    response: latestLog ? json(latestLog.response) : t("playground.emptyLog"),
+    response: selectedLog ? json(selectedLog.response) : t("playground.emptyLog"),
   };
 
   const tabs: Array<[InspectorTab, MessageKey]> = [
@@ -436,7 +435,15 @@ export function PlaygroundContent() {
             <span className="history-title">{t("playground.activity")}</span>
             <div className="history-list">
               {logs.length ? logs.map((log) => (
-                <button key={log.id} type="button" onClick={() => setActiveTab("response")}>
+                <button
+                  className={selectedLog?.id === log.id ? "active" : undefined}
+                  key={log.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedLogId(log.id);
+                    setActiveTab("response");
+                  }}
+                >
                   <span className={`request-state state-${log.status}`} />
                   <b>{log.method}</b>
                   <code>{log.path}</code>

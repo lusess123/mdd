@@ -5,17 +5,20 @@ import Link from "next/link";
 import { CodeBlock } from "./code-block";
 import { useMmd } from "./mmd-provider";
 
-const modelCode = `const Product = defineModel({
+const modelCode = `const productModel: ModelDefinition = {
   name: "Product",
-  fields: {
-    name: field.text({ required: true }),
-    price: field.money({ currency: "CNY" }),
-    tags: field.tags(),
-    status: field.status(),
-    cover: field.image(),
-  },
-  actions: ["publish", "archive", "duplicate"],
-});`;
+  label: "Product",
+  pluralLabel: "Products",
+  primaryKey: "id",
+  fields: [
+    { name: "name", label: "Name", type: "text" },
+    { name: "price", label: "Price", type: "money" },
+    { name: "status", label: "Status", type: "status" },
+  ],
+  actions: [
+    { name: "publish", label: "Publish", placement: "row" },
+  ],
+};`;
 
 const products = [
   { name: "Orbit Keyboard", price: "¥899.00", status: "published" },
@@ -46,7 +49,7 @@ export function HomeContent() {
           </div>
           <div className="install-line">
             <span>$</span>
-            <code>bun add mmd-contracts mmd-engine mmd-renderer</code>
+            <code>bun install &amp;&amp; bun run dev</code>
             <span className="install-status">{t("home.installReady")}</span>
           </div>
           <div className="hero-stats">
@@ -107,9 +110,9 @@ export function HomeContent() {
         <div className="pipeline-grid">
           <CodeBlock code={modelCode} label="product.model.ts" compact />
           <div className="pipeline-steps">
-            <article><span>01</span><div><code>mmd-contracts</code><p>{t("home.contracts")}</p></div></article>
-            <article><span>02</span><div><code>mmd-engine</code><p>{t("home.engine")}</p></div></article>
-            <article><span>03</span><div><code>mmd-renderer</code><p>{t("home.renderer")}</p></div></article>
+            <article><span>01</span><div><code>mmd-contracts · {t("home.current")}</code><p>{t("home.contracts")}</p></div></article>
+            <article><span>02</span><div><code>mmd-engine · {t("home.planned")}</code><p>{t("home.engine")}</p></div></article>
+            <article><span>03</span><div><code>mmd-renderer · {t("home.planned")}</code><p>{t("home.renderer")}</p></div></article>
           </div>
         </div>
       </section>

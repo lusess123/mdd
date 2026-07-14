@@ -162,6 +162,8 @@ code, pre, .mono { font-family: var(--font-mono); }
 .sidebar-status { margin-top: 15px; padding: 9px; border: 1px solid var(--border); border-radius: 4px; color: var(--faint); font: 8px var(--font-mono); }
 .sidebar-status .live-dot { width: 5px; height: 5px; margin-right: 5px; }
 .docs-body { min-width: 0; }
+.docs-notice { display: grid; gap: 3px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid #3a5a58; border-radius: 5px; color: var(--muted); background: #0e1b1d; font-size: 10px; line-height: 1.6; }
+.docs-notice strong { color: var(--cyan); font-size: 11px; }
 .default-panel { border: 1px solid var(--border); border-radius: 5px; background: var(--panel-2); }
 .default-panel-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding: 17px; border-bottom: 1px solid var(--border); }
 .default-panel h2 { margin: 5px 0 0; font-size: 16px; }
@@ -223,6 +225,7 @@ code, pre, .mono { font-family: var(--font-mono); }
 .history-list { max-height: 180px; overflow: auto; }
 .history-list button { display: grid; grid-template-columns: 7px 34px 1fr auto; align-items: center; gap: 5px; width: 100%; min-height: 30px; padding: 0 9px; border: 0; border-bottom: 1px solid #1c2734; color: var(--muted); background: transparent; text-align: left; cursor: pointer; }
 .history-list button:hover { background: var(--panel-3); }
+.history-list button.active { background: #13212b; box-shadow: inset 2px 0 0 var(--cyan); }
 .history-list b { color: var(--blue); font: 8px var(--font-mono); }
 .history-list code { overflow: hidden; font-size: 8px; white-space: nowrap; text-overflow: ellipsis; }
 .history-list em { color: var(--faint); font: normal 8px var(--font-mono); }
