@@ -23,7 +23,11 @@ import {
 import { createDefaultFieldRegistry } from "./default-fields";
 import { FieldRegistry } from "./field-registry";
 import { detectMmdLocale, translate, type MmdLocale } from "./i18n";
-import { createFetchMmdRequest, MmdRequestError } from "./transport";
+import {
+  createFetchMmdRequest,
+  localizeMmdRequestError,
+  MmdRequestError,
+} from "./transport";
 import type {
   ActionHandler,
   FieldRenderers,
@@ -71,6 +75,37 @@ function mergeMeta(current: RendererMeta, incoming: RendererMeta): RendererMeta 
     views: { ...current.views, ...incoming.views },
     dicts: { ...current.dicts, ...incoming.dicts },
   };
+}
+
+interface MmdErrorReporterOptions {
+  onError: (error: Error) => void;
+  reportedErrors: WeakSet<Error>;
+  showError: (message: string) => unknown;
+  t: (key: string) => string;
+}
+
+function reportMmdError(
+  cause: unknown,
+  { onError, reportedErrors, showError, t }: MmdErrorReporterOptions,
+): Error {
+  const normalized =
+    cause instanceof DOMException && cause.name === "AbortError"
+      ? new MmdRequestError(t("errors.timeout"), undefined, "TIMEOUT")
+      : cause instanceof TypeError
+        ? new MmdRequestError(t("errors.network"), undefined, "NETWORK_ERROR")
+        : cause instanceof Error
+          ? cause
+          : new MmdRequestError(t("errors.unknown"));
+  const error =
+    normalized instanceof MmdRequestError
+      ? localizeMmdRequestError(normalized, t)
+      : normalized;
+
+  if (reportedErrors.has(error)) return error;
+  reportedErrors.add(error);
+  onError(error);
+  void showError(error.message);
+  return error;
 }
 
 function MmdProviderRuntime({
@@ -134,21 +169,13 @@ function MmdProviderRuntime({
   );
 
   const reportError = useCallback(
-    (cause: unknown): Error => {
-      const error =
-        cause instanceof DOMException && cause.name === "AbortError"
-          ? new MmdRequestError(t("errors.timeout"), undefined, "TIMEOUT")
-          : cause instanceof TypeError
-            ? new MmdRequestError(t("errors.network"), undefined, "NETWORK_ERROR")
-            : cause instanceof Error
-              ? cause
-              : new MmdRequestError(t("errors.unknown"));
-      if (reportedErrors.current.has(error)) return error;
-      reportedErrors.current.add(error);
-      config.onError(error);
-      void message.error(error.message);
-      return error;
-    },
+    (cause: unknown): Error =>
+      reportMmdError(cause, {
+        onError: config.onError,
+        reportedErrors: reportedErrors.current,
+        showError: message.error,
+        t,
+      }),
     [config, message, t],
   );
 

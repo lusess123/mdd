@@ -206,6 +206,17 @@ export class MmdEngine {
       throw new MmdError("INVALID_INPUT", "At least one record id is required");
     }
 
+    const definition = [...(model.actions ?? []), ...(model.dataActions ?? [])].find(
+      (action) => this.#actionName(action) === request.action
+    );
+    if (!definition) {
+      throw new MmdError(
+        "ACTION_NOT_FOUND",
+        `Action is not declared: ${model.name}.${request.action}`,
+        { model: model.name, action: request.action }
+      );
+    }
+
     if (
       request.action === "remove" ||
       request.action === "delete" ||
@@ -221,16 +232,6 @@ export class MmdEngine {
       };
     }
 
-    const definition = [...(model.actions ?? []), ...(model.dataActions ?? [])].find(
-      (action) => this.#actionName(action) === request.action
-    );
-    if (!definition) {
-      throw new MmdError(
-        "ACTION_NOT_FOUND",
-        `Action is not declared: ${model.name}.${request.action}`,
-        { model: model.name, action: request.action }
-      );
-    }
     const handlerName = definition.handler ?? definition.extend ?? request.action;
     const handler =
       this.#actions[`${model.name}.${handlerName}`] ?? this.#actions[handlerName];

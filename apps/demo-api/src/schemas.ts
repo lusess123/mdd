@@ -167,7 +167,7 @@ const ActionDefinitionSchema = z.object({
   label: z.string(),
   placement: z.string(),
   tone: z.string().optional(),
-  confirm: z.string().optional()
+  confirm: z.union([z.boolean(), z.string()]).optional()
 });
 
 export const ModelDefinitionSchema = z.object({

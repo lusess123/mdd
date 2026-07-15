@@ -1,6 +1,11 @@
 import { describe, expect, it } from "bun:test";
 
-import { createFetchMmdRequest } from "./transport";
+import { createMessageCatalog, translate } from "./i18n";
+import {
+  createFetchMmdRequest,
+  localizeMmdRequestError,
+  MmdRequestError,
+} from "./transport";
 
 describe("default transport", () => {
   it("joins the API base URL and applies custom auth headers", async () => {
@@ -36,5 +41,38 @@ describe("default transport", () => {
       }),
     );
     expect(calls[0]?.init?.credentials).toBe("include");
+  });
+
+  it("localizes known API error codes and preserves error metadata", () => {
+    const catalog = createMessageCatalog();
+    const error = new MmdRequestError(
+      "Too many requests",
+      429,
+      "RATE_LIMITED",
+      { retryAfter: 60 },
+    );
+
+    const localized = localizeMmdRequestError(error, (key) =>
+      translate(catalog, "zh-CN", key),
+    );
+
+    expect(localized).toBe(error);
+    expect(localized).toMatchObject({
+      message: "请求过于频繁，请稍后重试",
+      status: 429,
+      code: "RATE_LIMITED",
+      details: { retryAfter: 60 },
+    });
+  });
+
+  it("keeps the server message for unknown API error codes", () => {
+    const catalog = createMessageCatalog();
+    const error = new MmdRequestError("Custom failure", 418, "CUSTOM_ERROR");
+
+    expect(
+      localizeMmdRequestError(error, (key) =>
+        translate(catalog, "zh-CN", key),
+      ),
+    ).toBe(error);
   });
 });

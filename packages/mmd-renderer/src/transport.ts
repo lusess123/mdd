@@ -21,6 +21,18 @@ export class MmdRequestError extends Error {
   }
 }
 
+export function localizeMmdRequestError(
+  error: MmdRequestError,
+  translate: (key: string) => string,
+): MmdRequestError {
+  if (!error.code) return error;
+
+  const key = `errors.code.${error.code}`;
+  const message = translate(key);
+  if (message !== key) error.message = message;
+  return error;
+}
+
 export function joinMmdUrl(baseUrl: string, path: string): string {
   if (/^https?:\/\//.test(path)) return path;
   return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;

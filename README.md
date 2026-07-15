@@ -28,7 +28,7 @@ Without `DATABASE_URL`, the API uses the in-memory adapter. Provide a Neon Postg
 - API: <https://mmd-api.zyking.xyz>
 - API reference: <https://mmd-api.zyking.xyz/docs>
 
-The statically exported Next.js site is served by Cloudflare Workers Static Assets. The Hono API runs on Cloudflare Workers and stores demo data in Neon. A cookie or `X-MMD-Session` isolates each online visitor's data.
+The statically exported Next.js site is served by Cloudflare Workers Static Assets. The Hono API runs on Cloudflare Workers and stores demo data in Neon. Production sessions use a hash of Cloudflare's source IP; local development supports a cookie or `X-MMD-Session`.
 
 ## Core packages
 
@@ -38,7 +38,7 @@ mmd-engine     Metadata registry, queries, writes, filters, pagination, actions
 mmd-renderer   React Provider, list/detail/forms, custom fields, and actions
 ```
 
-All three implementations and their tests are included in this repository. The names `mmd-contracts`, `mmd-engine`, and `mmd-renderer` were unregistered on npm when checked on 2026-07-14; check again immediately before publishing.
+All three implementations and their tests are included in this repository. The names `mmd-contracts`, `mmd-engine`, and `mmd-renderer` were unregistered on npm when checked on 2026-07-15; check again immediately before publishing.
 
 ## Frontend defaults
 

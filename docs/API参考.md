@@ -129,13 +129,15 @@ Content-Type: application/json
 
 ## 会话隔离
 
-Neon 模式下，API 按以下优先级识别会话：
+Cloudflare 生产环境使用来源 IP 的哈希摘要作为会话 ID，客户端不能通过 Header 或 Cookie 切换会话。原始 IP 不写入 Neon。
+
+本地 Neon 模式按以下优先级识别会话：
 
 1. 请求头 `X-MMD-Session`，格式为 8～64 位字母、数字、`_` 或 `-`。
 2. HttpOnly Cookie `mmd_session`。
 3. 自动生成新 Cookie。
 
-所有 Product 查询和写入都限定在当前会话。浏览器跨域调用需要 `credentials: "include"`。
+所有 Product 查询和写入都限定在当前会话。公开 Demo 按来源 IP 统一限流为每分钟 120 次，并在数据库层将每个会话限制为 50 条 Product。浏览器跨域调用需要 `credentials: "include"`。
 
 ## 错误格式
 
@@ -159,4 +161,6 @@ Neon 模式下，API 按以下优先级识别会话：
 | `404` | `RECORD_NOT_FOUND` | 记录不存在 |
 | `404` | `ACTION_NOT_FOUND` | 操作未声明或未注册 |
 | `409` | `SKU_CONFLICT` | SKU 重复 |
+| `409` | `SESSION_RECORD_LIMIT` | 当前 Demo 会话已达到 50 条记录 |
+| `429` | `RATE_LIMITED` | 请求过于频繁 |
 | `500` | `INTERNAL_ERROR` | 未处理的服务端错误 |

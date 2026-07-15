@@ -70,12 +70,16 @@ jobs:
         run: bun --cwd=apps/demo-api run deploy
       - name: Verify API
         run: |
-          curl --fail --retry 8 --retry-delay 5 https://mmd-api.zyking.xyz/health
-          curl --fail --retry 8 --retry-delay 5 https://mmd-api.zyking.xyz/api/meta
+          curl --fail --retry-all-errors --retry 24 --retry-delay 5 --retry-max-time 120 \
+            https://mmd-api.zyking.xyz/health
+          curl --fail --retry-all-errors --retry 24 --retry-delay 5 --retry-max-time 120 \
+            --header 'Content-Type: application/json' \
+            --data '{"models":["Product"]}' \
+            https://mmd-api.zyking.xyz/api/mmd/meta
 
   deploy-website:
     name: Deploy static website
-    needs: [validate, migrate]
+    needs: deploy-api
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -93,4 +97,6 @@ jobs:
       - name: Deploy website
         run: bun --cwd=apps/website run deploy
       - name: Verify website
-        run: curl --fail --retry 8 --retry-delay 5 https://mmd.zyking.xyz
+        run: >-
+          curl --fail --retry-all-errors --retry 24 --retry-delay 5
+          --retry-max-time 120 https://mmd.zyking.xyz

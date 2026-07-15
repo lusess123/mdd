@@ -1,6 +1,34 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 
-import { createApp } from "./app";
+import { createApp, edgeSessionId } from "./app";
+import { MemoryProductAdapter } from "./memory-adapter";
+import { createProductEngine } from "./product-engine";
+import { createMemoryRuntime } from "./runtime";
+import { MetaResponseSchema } from "./schemas";
+
+class RecordLimitAdapter extends MemoryProductAdapter {
+  async create(
+    _input: Parameters<MemoryProductAdapter["create"]>[0]
+  ): Promise<Record<string, unknown>> {
+    throw new Error("database rejected insert: MMD_SESSION_RECORD_LIMIT");
+  }
+}
+
+async function createAppAtRecordLimit() {
+  const runtime = createMemoryRuntime();
+  for (let index = 0; index < 47; index += 1) {
+    await runtime.engine.save({
+      model: "Product",
+      data: {
+        name: `Limit product ${index}`,
+        sku: `LIMIT-${index}`,
+        price: 1,
+        inventory: 1
+      }
+    });
+  }
+  return createApp({ runtime });
+}
 
 describe("MMD demo API", () => {
   let app: ReturnType<typeof createApp>;
@@ -24,6 +52,7 @@ describe("MMD demo API", () => {
     };
 
     expect(response.status).toBe(200);
+    expect(MetaResponseSchema.safeParse(body).success).toBe(true);
     expect(body.models.map((model) => model.name)).toEqual(["Product"]);
     expect([...new Set(body.actions.map((action) => action.name))]).toEqual([
       "publish",
@@ -464,16 +493,198 @@ describe("MMD demo API", () => {
     );
   });
 
+  it("rate limits all API paths through one Cloudflare IP bucket", async () => {
+    const keys: string[] = [];
+    const env = {
+      API_RATE_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          keys.push(key);
+          return { success: keys.length < 3 };
+        }
+      }
+    };
+    await app.request(
+      "/api/products/dynamic-a",
+      { headers: { "cf-connecting-ip": "203.0.113.10" } },
+      env
+    );
+    await app.request(
+      "/api/products/dynamic-b",
+      { headers: { "cf-connecting-ip": "203.0.113.10" } },
+      env
+    );
+    const response = await app.request(
+      "/api/products?page=1",
+      { headers: { "cf-connecting-ip": "203.0.113.10" } },
+      env
+    );
+
+    expect(keys).toEqual([
+      "mmd-demo:203.0.113.10",
+      "mmd-demo:203.0.113.10",
+      "mmd-demo:203.0.113.10"
+    ]);
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({
+      error: { code: "RATE_LIMITED", message: "Too many requests" }
+    });
+  });
+
+  it("binds production demo sessions to a hash of the Cloudflare IP", async () => {
+    const first = await edgeSessionId("203.0.113.10");
+    const same = await edgeSessionId("203.0.113.10");
+    const other = await edgeSessionId("203.0.113.11");
+
+    expect(first).toBe(same);
+    expect(first).not.toBe(other);
+    expect(first).toMatch(/^edge_[a-f0-9]{40}$/);
+    expect(first).not.toContain("203.0.113.10");
+  });
+
+  it("does not rate limit health, docs, OpenAPI, or preflight requests", async () => {
+    let calls = 0;
+    const env = {
+      API_RATE_LIMITER: {
+        limit: async () => {
+          calls += 1;
+          return { success: false };
+        }
+      }
+    };
+
+    for (const path of ["/health", "/docs", "/openapi.json"]) {
+      const response = await app.request(path, undefined, env);
+      expect(response.status).not.toBe(429);
+    }
+    const preflight = await app.request(
+      "/api/products",
+      {
+        method: "OPTIONS",
+        headers: {
+          Origin: "https://demo.example",
+          "Access-Control-Request-Method": "POST"
+        }
+      },
+      env
+    );
+
+    expect(preflight.status).not.toBe(429);
+    expect(calls).toBe(0);
+  });
+
+  it("caps generic and REST creates at 50 records per session", async () => {
+    const limitApp = await createAppAtRecordLimit();
+    const requests = [
+      {
+        path: "/api/mmd/save",
+        body: {
+          model: "Product",
+          data: {
+            name: "Generic overflow",
+            sku: "OVERFLOW-GENERIC",
+            price: 1,
+            inventory: 1
+          }
+        }
+      },
+      {
+        path: "/api/products",
+        body: {
+          name: "REST overflow",
+          sku: "OVERFLOW-REST",
+          price: 1,
+          inventory: 1
+        }
+      }
+    ];
+
+    for (const request of requests) {
+      const response = await limitApp.request(request.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.body)
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: {
+          code: "SESSION_RECORD_LIMIT",
+          message: "Demo sessions are limited to 50 records"
+        }
+      });
+    }
+  });
+
+  it("caps generic and REST duplicate actions at 50 records per session", async () => {
+    const limitApp = await createAppAtRecordLimit();
+    const requests = [
+      {
+        path: "/api/mmd/actions/duplicate",
+        body: { model: "Product", ids: ["product-1001"] }
+      },
+      {
+        path: "/api/actions/duplicate",
+        body: { ids: ["product-1001"] }
+      }
+    ];
+
+    for (const request of requests) {
+      const response = await limitApp.request(request.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request.body)
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: {
+          code: "SESSION_RECORD_LIMIT",
+          message: "Demo sessions are limited to 50 records"
+        }
+      });
+    }
+  });
+
+  it("maps the atomic database quota error to the public session limit error", async () => {
+    const constrainedApp = createApp({
+      runtime: {
+        engine: createProductEngine(new RecordLimitAdapter()),
+        dispose: async () => undefined
+      }
+    });
+    const response = await constrainedApp.request("/api/mmd/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        data: {
+          name: "Concurrent overflow",
+          sku: "CONCURRENT-OVERFLOW",
+          price: 1,
+          inventory: 1
+        }
+      })
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: {
+        code: "SESSION_RECORD_LIMIT",
+        message: "Demo sessions are limited to 50 records"
+      }
+    });
+  });
+
   it("publishes an OpenAPI document for every public endpoint", async () => {
     const response = await app.request("/openapi.json");
     const document = (await response.json()) as {
       openapi: string;
+      info: { title: string };
       paths: Record<string, Record<string, unknown>>;
       components?: { schemas?: Record<string, unknown> };
     };
 
     expect(response.status).toBe(200);
     expect(document.openapi).toBe("3.1.0");
+    expect(document.info.title).toBe("MMD API Reference");
     expect(Object.keys(document.paths).sort()).toEqual(
       [
         "/api/actions/{action}",
@@ -490,6 +701,30 @@ describe("MMD demo API", () => {
       ].sort()
     );
     expect(document.components?.schemas).toHaveProperty("Product");
+    for (const [path, pathItem] of Object.entries(document.paths)) {
+      if (path === "/health") continue;
+      for (const operation of Object.values(pathItem)) {
+        const responses = (operation as { responses?: Record<string, unknown> })
+          .responses;
+        expect(responses, `${path} should document rate limiting`).toHaveProperty(
+          "429"
+        );
+      }
+    }
+    expect(
+      (
+        document.paths["/api/mmd/actions/{action}"]?.post as {
+          responses: Record<string, unknown>;
+        }
+      ).responses
+    ).toHaveProperty("409");
+    expect(
+      (
+        document.paths["/api/actions/{action}"]?.post as {
+          responses: Record<string, unknown>;
+        }
+      ).responses
+    ).toHaveProperty("409");
   });
 
   it("returns a stable error for an unknown route", async () => {

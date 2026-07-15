@@ -14,6 +14,15 @@ enum ProductStatus {
   archived
 }
 
+model DemoSession {
+  id             String   @id @db.VarChar(64)
+  productCount   Int      @default(0) @map("product_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+
+  @@map("mmd_demo_sessions")
+}
+
 model Product {
   id        String        @id @default(cuid()) @db.VarChar(64)
   sessionId String        @map("session_id") @db.VarChar(64)

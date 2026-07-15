@@ -15,8 +15,14 @@ interface ProductDelegate {
   deleteMany(args: Query): Promise<{ count: number }>;
 }
 
+interface DemoSessionDelegate {
+  count(args: Query): Promise<number>;
+  createMany(args: Query): Promise<{ count: number }>;
+}
+
 export interface ProductPrismaClient {
   product: ProductDelegate;
+  demoSession: DemoSessionDelegate;
   $disconnect(): Promise<void>;
 }
 
@@ -79,6 +85,11 @@ export class PrismaProductAdapter implements MmdDataAdapter {
   ) {}
 
   async seed(): Promise<void> {
+    const knownSession = await this.client.demoSession.count({
+      where: { id: this.sessionId }
+    });
+    if (knownSession > 0) return;
+
     await this.client.product.createMany({
       data: seededProducts.map(({ id: _id, ...product }) => ({
         ...product,
@@ -87,6 +98,10 @@ export class PrismaProductAdapter implements MmdDataAdapter {
         createdAt: new Date(product.createdAt),
         updatedAt: new Date(product.updatedAt)
       })),
+      skipDuplicates: true
+    });
+    await this.client.demoSession.createMany({
+      data: [{ id: this.sessionId }],
       skipDuplicates: true
     });
   }

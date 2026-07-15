@@ -20,8 +20,19 @@ describe("NeonRuntimeFactory", () => {
     const seededSessions: string[] = [];
     let clientCreations = 0;
     let disconnects = 0;
+    const sessionMarkers = new Set<string>();
 
     const client: ProductPrismaClient = {
+      demoSession: {
+        async count(query) {
+          return sessionMarkers.has((query.where as { id: string }).id) ? 1 : 0;
+        },
+        async createMany(query) {
+          const data = query.data as Array<{ id: string }>;
+          data.forEach(({ id }) => sessionMarkers.add(id));
+          return { count: data.length };
+        }
+      },
       product: {
         async count() {
           return 1;
@@ -74,5 +85,71 @@ describe("NeonRuntimeFactory", () => {
 
     await Promise.all([first.dispose(), second.dispose()]);
     expect(disconnects).toBe(0);
+  });
+
+  it("cleans expired sessions in bounded database batches", async () => {
+    const calls: Array<{ query: string; values: unknown[] }> = [];
+    let markerChecks = 0;
+    const results = [
+      [{ sessions_deleted: 1_000, products_deleted: 3_000 }],
+      [{ sessions_deleted: 2, products_deleted: 5 }],
+      [{ sessions_deleted: 0, products_deleted: 0 }]
+    ];
+    const client = {
+      demoSession: {
+        async count() {
+          markerChecks += 1;
+          return 1;
+        },
+        async createMany() {
+          return { count: 0 };
+        }
+      },
+      product: {
+        async count() {
+          return 0;
+        },
+        async findMany() {
+          return [];
+        },
+        async findFirst() {
+          return null;
+        },
+        async create() {
+          throw new Error("Not used");
+        },
+        async createMany() {
+          return { count: 0 };
+        },
+        async updateMany() {
+          return { count: 0 };
+        },
+        async deleteMany() {
+          return { count: 0 };
+        }
+      },
+      async $queryRawUnsafe(query: string, ...values: unknown[]) {
+        calls.push({ query, values });
+        return results[calls.length - 1] ?? [];
+      },
+      async $disconnect() {}
+    } satisfies ProductPrismaClient & {
+      $queryRawUnsafe(query: string, ...values: unknown[]): Promise<unknown>;
+    };
+    const factory = new NeonRuntimeFactory(async () => client);
+    const cutoff = new Date("2026-07-08T03:00:00.000Z");
+    await factory.create("postgres://demo", "session_a");
+
+    const result = await factory.cleanupExpiredSessions(
+      "postgres://demo",
+      cutoff
+    );
+    await factory.create("postgres://demo", "session_a");
+
+    expect(result).toEqual({ sessionsDeleted: 1_002, productsDeleted: 3_005 });
+    expect(calls).toHaveLength(3);
+    expect(markerChecks).toBe(2);
+    expect(calls[0]?.query).toContain("mmd_cleanup_expired_demo_sessions");
+    expect(calls[0]?.values).toEqual([cutoff.toISOString(), 1_000]);
   });
 });

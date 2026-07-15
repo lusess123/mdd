@@ -197,8 +197,23 @@ describe("MmdEngine", () => {
     expect(adapter.rows).toHaveLength(0);
   });
 
-  test("旧版 del 动作名继续执行内置删除", async () => {
-    const { engine } = createEngine([{ id: "p1", name: "Alpha" }]);
+  test("旧版 del 动作也必须先由模型声明", async () => {
+    const { engine, adapter } = createEngine([{ id: "p1", name: "Alpha" }]);
+
+    await expect(
+      engine.executeAction({ model: "Product", action: "del", ids: ["p1"] })
+    ).rejects.toMatchObject({ code: "ACTION_NOT_FOUND" });
+
+    expect(adapter.rows).toHaveLength(1);
+  });
+
+  test("模型声明 del 后可使用内置删除处理器", async () => {
+    const registry = new MmdRegistry().registerModel({
+      ...productModel,
+      dataActions: [{ name: "del", label: "删除" }]
+    });
+    const adapter = new MemoryAdapter([{ id: "p1", name: "Alpha" }]);
+    const engine = new MmdEngine({ registry, adapter });
 
     const result = await engine.executeAction({
       model: "Product",

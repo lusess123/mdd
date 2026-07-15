@@ -28,7 +28,7 @@ bun run dev
 - API：<https://mmd-api.zyking.xyz>
 - API 文档：<https://mmd-api.zyking.xyz/docs>
 
-官网通过 Next.js 静态导出部署到 Cloudflare Workers Static Assets；API 部署到 Cloudflare Workers，数据存储在 Neon。线上 Demo 使用 Cookie 或 `X-MMD-Session` 隔离访客数据。
+官网通过 Next.js 静态导出部署到 Cloudflare Workers Static Assets；API 部署到 Cloudflare Workers，数据存储在 Neon。生产会话使用 Cloudflare 来源 IP 的哈希摘要，本地开发支持 Cookie 或 `X-MMD-Session`。
 
 ## 三个核心包
 
@@ -38,7 +38,7 @@ mmd-engine     元数据注册、查询、写入、过滤、分页和自定义�
 mmd-renderer   React Provider、列表/详情/表单、自定义字段和操作
 ```
 
-三个包的源码和测试均在仓库内。`mmd-contracts`、`mmd-engine`、`mmd-renderer` 在 2026-07-14 查询时均未被 npm 注册；正式发布前需要再次确认名称。
+三个包的源码和测试均在仓库内。`mmd-contracts`、`mmd-engine`、`mmd-renderer` 在 2026-07-15 查询时均未被 npm 注册；正式发布前需要再次确认名称。
 
 ## 前端默认实现
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { CodeBlock } from "./code-block";
+import { HomeLiveRenderer } from "./home-live-renderer";
 import { useMmd } from "./mmd-provider";
 
 const modelCode = `const productModel: ModelDefinition = {
@@ -27,12 +28,6 @@ const modelCode = `const productModel: ModelDefinition = {
   ],
 };`;
 
-const products = [
-  { name: "Orbit Keyboard", price: "$899.00", status: "published" },
-  { name: "Signal Dock", price: "$429.00", status: "draft" },
-  { name: "Mono Light", price: "$1,199.00", status: "archived" },
-];
-
 export function HomeContent() {
   const { t } = useMmd();
 
@@ -56,7 +51,7 @@ export function HomeContent() {
           </div>
           <div className="install-line">
             <span>$</span>
-            <code>bun install &amp;&amp; bun run dev</code>
+            <code>bun add mmd-contracts mmd-engine mmd-renderer</code>
             <span className="install-status">{t("home.installReady")}</span>
           </div>
           <div className="hero-stats">
@@ -69,39 +64,11 @@ export function HomeContent() {
         <div className="hero-console">
           <div className="window-bar">
             <div className="window-dots"><span /><span /><span /></div>
-            <span>playground / products</span>
+            <span>mmd://Product.previewview</span>
             <span className="connection-state"><i /> {t("home.apiConnected")}</span>
           </div>
-          <div className="console-tabs">
-            <span className="active">{t("home.preview")}</span>
-            <span>{t("common.model")}</span>
-            <span>{t("common.request")}</span>
-          </div>
-          <div className="mini-toolbar">
-            <span>Products <b>3</b></span>
-            <button type="button">+ {t("actions.create")}</button>
-          </div>
-          <div className="mini-table">
-            <div className="mini-row mini-header">
-              <span>{t("fields.name")}</span>
-              <span>{t("fields.price")}</span>
-              <span>{t("fields.status")}</span>
-              <span />
-            </div>
-            {products.map((product) => (
-              <div className="mini-row" key={product.name}>
-                <span><i className="product-swatch" />{product.name}</span>
-                <span className="mono">{product.price}</span>
-                <span><em className={`status status-${product.status}`}>{t(`status.${product.status}` as "status.draft")}</em></span>
-                <span className="row-action">•••</span>
-              </div>
-            ))}
-          </div>
-          <div className="console-log">
-            <span className="log-time">12:48:03</span>
-            <span className="log-method">GET</span>
-            <code>/api/products</code>
-            <span className="log-ok">200 · 18ms</span>
+          <div className="hero-renderer">
+            <HomeLiveRenderer />
           </div>
         </div>
       </section>

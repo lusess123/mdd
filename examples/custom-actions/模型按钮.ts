@@ -12,7 +12,7 @@ export const productActions: ActionDefinition[] = [
     name: "archive",
     label: "Archive",
     placement: "row",
-    confirm: "Archive this product?",
+    confirm: true,
     showExpression: 'row.status !== "archived"',
   },
   {

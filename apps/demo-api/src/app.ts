@@ -38,6 +38,9 @@ import {
 } from "./schemas";
 
 type Bindings = {
+  API_RATE_LIMITER?: {
+    limit(input: { key: string }): Promise<{ success: boolean }>;
+  };
   CORS_ORIGIN?: string;
   DATABASE_URL?: string;
 };
@@ -55,6 +58,13 @@ export interface CreateAppOptions {
 type AppContext = Context<AppEnvironment>;
 type ProductRow = Product & Record<string, unknown>;
 
+const MAX_SESSION_RECORDS = 50;
+const RATE_LIMIT_EXEMPT_PATHS = new Set([
+  "/health",
+  "/docs",
+  "/openapi.json"
+]);
+
 function normalizeOrigins(value: string | string[]): string | string[] {
   if (Array.isArray(value) || !value.includes(",")) return value;
   return value
@@ -65,7 +75,7 @@ function normalizeOrigins(value: string | string[]): string | string[] {
 
 function jsonError(
   context: AppContext,
-  status: 400 | 404 | 409 | 500,
+  status: 400 | 404 | 409 | 429 | 500,
   code: string,
   message: string,
   details?: unknown
@@ -76,7 +86,34 @@ function jsonError(
   );
 }
 
-function sessionId(context: AppContext): string {
+function isRateLimitExempt(context: AppContext): boolean {
+  if (context.req.method === "OPTIONS") return true;
+  const path = context.req.path.replace(/\/+$/, "") || "/";
+  return RATE_LIMIT_EXEMPT_PATHS.has(path);
+}
+
+export async function edgeSessionId(ip: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`mmd-demo:${ip}`);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hash = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+  return `edge_${hash.slice(0, 40)}`;
+}
+
+function recordLimitError(context: AppContext) {
+  return jsonError(
+    context,
+    409,
+    "SESSION_RECORD_LIMIT",
+    `Demo sessions are limited to ${MAX_SESSION_RECORDS} records`
+  );
+}
+
+async function sessionId(context: AppContext): Promise<string> {
+  const edgeIp = context.req.header("cf-connecting-ip");
+  if (edgeIp) return edgeSessionId(edgeIp);
+
   const supplied = context.req.header("x-mmd-session");
   if (supplied && /^[a-zA-Z0-9_-]{8,64}$/.test(supplied)) return supplied;
 
@@ -115,6 +152,10 @@ function isUniqueConstraint(error: unknown): boolean {
   );
 }
 
+function isRecordLimitConstraint(error: unknown): boolean {
+  return error instanceof Error && error.message.includes("MMD_SESSION_RECORD_LIMIT");
+}
+
 export function createApp(options: CreateAppOptions = {}) {
   const app = new OpenAPIHono<AppEnvironment>();
   const sharedRuntime = options.runtime ?? createMemoryRuntime();
@@ -125,7 +166,7 @@ export function createApp(options: CreateAppOptions = {}) {
   ): Promise<T> {
     const databaseUrl = options.databaseUrl ?? context.env?.DATABASE_URL;
     const runtime = databaseUrl
-      ? await createNeonRuntime(databaseUrl, sessionId(context))
+      ? await createNeonRuntime(databaseUrl, await sessionId(context))
       : sharedRuntime;
     try {
       return await run(runtime);
@@ -148,6 +189,19 @@ export function createApp(options: CreateAppOptions = {}) {
     return result.data.some((product) => product.id !== excludedId);
   }
 
+  async function hasRecordCapacity(
+    runtime: ProductRuntime,
+    additions = 1
+  ): Promise<boolean> {
+    const { total } = await runtime.engine.queryList({
+      model: productModel.name,
+      fields: ["id"],
+      page: 1,
+      pageSize: 1
+    });
+    return total + additions <= MAX_SESSION_RECORDS;
+  }
+
   app.use("*", async (context, next) => {
     const origin = normalizeOrigins(
       options.corsOrigin ?? context.env?.CORS_ORIGIN ?? "*"
@@ -162,11 +216,29 @@ export function createApp(options: CreateAppOptions = {}) {
     })(context, next);
   });
 
+  app.use("*", async (context, next) => {
+    const limiter = context.env?.API_RATE_LIMITER;
+    if (!limiter || isRateLimitExempt(context)) return next();
+
+    const ip = context.req.header("cf-connecting-ip") ?? "unknown";
+    const { success } = await limiter.limit({
+      key: `mmd-demo:${ip}`
+    });
+    return success
+      ? next()
+      : jsonError(
+          context,
+          429,
+          "RATE_LIMITED",
+          "Too many requests"
+        );
+  });
+
   app.get("/health", (context) => context.json({ status: "ok" }));
   app.get(
     "/docs",
     apiReference({
-      pageTitle: "MMD Demo API",
+      pageTitle: "MMD API Reference",
       spec: { url: "/openapi.json" },
       theme: "kepler"
     })
@@ -270,6 +342,13 @@ export function createApp(options: CreateAppOptions = {}) {
         ) {
           return jsonError(context, 409, "SKU_CONFLICT", "SKU already exists");
         }
+        if (
+          request.model === productModel.name &&
+          !request.id &&
+          !(await hasRecordCapacity(runtime))
+        ) {
+          return recordLimitError(context);
+        }
         return context.json(
           { data: await runtime.engine.save(request as SaveRequest) },
           request.id ? 200 : 201
@@ -313,14 +392,21 @@ export function createApp(options: CreateAppOptions = {}) {
     if (!parsed.success) {
       return jsonError(context, 400, "VALIDATION_ERROR", "Invalid request", parsed.error.issues);
     }
-    return withRuntime(context, async ({ engine }) =>
-      context.json(
-        await engine.executeAction({
+    return withRuntime(context, async (runtime) => {
+      if (
+        parsed.data.model === productModel.name &&
+        parsed.data.action === "duplicate" &&
+        !(await hasRecordCapacity(runtime, parsed.data.ids.length))
+      ) {
+        return recordLimitError(context);
+      }
+      return context.json(
+        await runtime.engine.executeAction({
           ...(parsed.data as ExecuteActionRequest),
           payload: parsed.data.payload ?? parsed.data.row
         })
-      )
-    );
+      );
+    });
   });
 
   // Product REST 别名：便于 curl、OpenAPI 与非 MMD 客户端直接使用。
@@ -377,6 +463,9 @@ export function createApp(options: CreateAppOptions = {}) {
       return await withRuntime(context, async (runtime) => {
         if (await hasSku(runtime, input.data.sku)) {
           return jsonError(context, 409, "SKU_CONFLICT", "SKU already exists");
+        }
+        if (!(await hasRecordCapacity(runtime))) {
+          return recordLimitError(context);
         }
         const data = await runtime.engine.save<ProductRow>({
           model: productModel.name,
@@ -449,16 +538,22 @@ export function createApp(options: CreateAppOptions = {}) {
       return jsonError(context, 400, "VALIDATION_ERROR", "Invalid request");
     }
     try {
-      return await withRuntime(context, async ({ engine }) =>
-        context.json(
-          await engine.executeAction<ProductRow>({
+      return await withRuntime(context, async (runtime) => {
+        if (
+          context.req.param("action") === "duplicate" &&
+          !(await hasRecordCapacity(runtime, input.data.ids.length))
+        ) {
+          return recordLimitError(context);
+        }
+        return context.json(
+          await runtime.engine.executeAction<ProductRow>({
             model: productModel.name,
             action: context.req.param("action"),
             ids: input.data.ids,
             payload: input.data.payload
           })
-        )
-      );
+        );
+      });
     } catch (error) {
       if (error instanceof MmdError && error.code === "ACTION_NOT_FOUND") {
         return jsonError(context, 404, "ACTION_NOT_FOUND", "Action not found");
@@ -474,6 +569,7 @@ export function createApp(options: CreateAppOptions = {}) {
     jsonError(context, 404, "NOT_FOUND", "Route not found")
   );
   app.onError((error, context) => {
+    if (isRecordLimitConstraint(error)) return recordLimitError(context);
     if (error instanceof MmdError) {
       const status =
         error.code === "MODEL_NOT_FOUND" ||

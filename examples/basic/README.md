@@ -30,7 +30,7 @@ bun run dev
 - [Prisma + Neon Adapter](../../apps/demo-api/src/prisma-adapter.ts)
 - [真实 Playground](../../apps/website/src/components/playground-content.tsx)
 
-未设置 `DATABASE_URL` 时使用内存 Adapter；线上和配置了数据库的本地环境使用 Neon。Neon 模式按 Cookie 或 `X-MMD-Session` 隔离数据。
+未设置 `DATABASE_URL` 时使用内存 Adapter；线上和配置了数据库的本地环境使用 Neon。生产会话按 Cloudflare 来源 IP 的哈希摘要隔离，本地 Neon 模式支持 Cookie 或 `X-MMD-Session`。
 
 全部示例可统一做类型检查：
 

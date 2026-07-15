@@ -37,6 +37,12 @@ describe("i18n messages", () => {
       translateApiError(messages, "zh-CN", "INTERNAL_ERROR", "failed"),
     ).toBe("服务端发生错误");
     expect(
+      translateApiError(messages, "zh-CN", "RATE_LIMITED", "busy"),
+    ).toBe("请求过于频繁，请稍后重试");
+    expect(
+      translateApiError(messages, "en-US", "SESSION_RECORD_LIMIT", "full"),
+    ).toBe("Demo sessions are limited to 50 records");
+    expect(
       translateApiError(messages, "zh-CN", "UNKNOWN", "Server fallback"),
     ).toBe("Server fallback");
   });

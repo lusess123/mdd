@@ -70,20 +70,24 @@ function matches(row: Row, expression?: FilterExpression): boolean {
     case "in":
       return Array.isArray(expected) && expected.includes(actual);
     case "gte":
-      return String(actual) >= String(expected);
+      return compareValue(actual, expected) >= 0;
     case "lte":
-      return String(actual) <= String(expected);
+      return compareValue(actual, expected) <= 0;
   }
+}
+
+function compareValue(left: unknown, right: unknown): number {
+  if (typeof left === "number" && typeof right === "number") {
+    return left - right;
+  }
+  return String(left ?? "").localeCompare(String(right ?? ""));
 }
 
 function compare(left: Row, right: Row, sort: SortDefinition[]): number {
   for (const item of sort) {
     const direction = item.direction === "desc" ? -1 : 1;
     if (left[item.field] === right[item.field]) continue;
-    return (
-      String(left[item.field] ?? "").localeCompare(String(right[item.field] ?? "")) *
-      direction
-    );
+    return compareValue(left[item.field], right[item.field]) * direction;
   }
   return 0;
 }

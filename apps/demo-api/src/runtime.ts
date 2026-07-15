@@ -16,6 +16,22 @@ type ProductPrismaClientFactory = (
   databaseUrl: string
 ) => Promise<ProductPrismaClient>;
 
+type CleanupQueryClient = {
+  $queryRawUnsafe<T>(query: string, ...values: unknown[]): Promise<T>;
+};
+
+export interface DemoCleanupResult {
+  sessionsDeleted: number;
+  productsDeleted: number;
+}
+
+const CLEANUP_BATCH_SIZE = 1_000;
+const CLEANUP_MAX_BATCHES = 20;
+const CLEANUP_QUERY = `
+  SELECT "sessions_deleted", "products_deleted"
+  FROM "mmd_cleanup_expired_demo_sessions"($1::timestamp, $2::integer)
+`;
+
 async function createProductPrismaClient(
   databaseUrl: string
 ): Promise<ProductPrismaClient> {
@@ -48,6 +64,32 @@ export class NeonRuntimeFactory {
       engine: createProductEngine(productAdapter),
       dispose: async () => undefined
     };
+  }
+
+  async cleanupExpiredSessions(
+    databaseUrl: string,
+    cutoff: Date
+  ): Promise<DemoCleanupResult> {
+    const client = (await this.#getClient(databaseUrl)) as ProductPrismaClient &
+      CleanupQueryClient;
+    const total: DemoCleanupResult = {
+      sessionsDeleted: 0,
+      productsDeleted: 0
+    };
+
+    for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
+      const [result] = await client.$queryRawUnsafe<
+        Array<{ sessions_deleted: number; products_deleted: number }>
+      >(CLEANUP_QUERY, cutoff.toISOString(), CLEANUP_BATCH_SIZE);
+      const sessionsDeleted = Number(result?.sessions_deleted ?? 0);
+      const productsDeleted = Number(result?.products_deleted ?? 0);
+      total.sessionsDeleted += sessionsDeleted;
+      total.productsDeleted += productsDeleted;
+      if (sessionsDeleted === 0) break;
+    }
+
+    if (total.sessionsDeleted > 0) this.#seededSessions.delete(client);
+    return total;
   }
 
   #getClient(databaseUrl: string): Promise<ProductPrismaClient> {
@@ -101,4 +143,11 @@ export async function createNeonRuntime(
   sessionId: string
 ): Promise<ProductRuntime> {
   return neonRuntimeFactory.create(databaseUrl, sessionId);
+}
+
+export function cleanupExpiredDemoSessions(
+  databaseUrl: string,
+  cutoff: Date
+): Promise<DemoCleanupResult> {
+  return neonRuntimeFactory.cleanupExpiredSessions(databaseUrl, cutoff);
 }

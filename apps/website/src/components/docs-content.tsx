@@ -4,19 +4,31 @@ import { CodeBlock } from "./code-block";
 import { PageIntro } from "./page-intro";
 import { useMmd } from "./mmd-provider";
 
-const quickStartCode = `git clone https://github.com/lusess123/mdd.git
-cd mdd
-bun install
-bun run dev
+const installCode = `bun add mmd-contracts mmd-engine mmd-renderer`;
 
-# Website: http://localhost:3000
-# API:     http://localhost:8787`;
+const modelCode = `import type { ModelDefinition } from "mmd-contracts";
+
+export const productModel: ModelDefinition = {
+  name: "Product",
+  label: "Product",
+  pluralLabel: "Products",
+  primaryKey: "id",
+  fields: [
+    { name: "id", label: "ID", type: "text", readOnly: true },
+    { name: "name", label: "Name", type: "text", required: true },
+    { name: "price", label: "Price", type: "money", required: true },
+    { name: "inventory", label: "Inventory", type: "inventory-meter", required: true },
+  ],
+  actions: [
+    { name: "duplicate", label: "Duplicate", type: "custom", placement: "row" },
+  ],
+};`;
 
 const providerCode = `import { MmdProvider, MmdRenderer } from "mmd-renderer";
 
 <MmdProvider
   api={{
-    baseUrl: "https://mmd-api.zyking.xyz/api",
+    baseUrl: "https://api.example.com/api",
     timeoutMs: 8_000,
     credentials: "include",
   }}
@@ -31,7 +43,14 @@ const providerCode = `import { MmdProvider, MmdRenderer } from "mmd-renderer";
   <MmdRenderer model="Product" view="listview" />
 </MmdProvider>`;
 
-const fieldCode = `function InventoryMeter({ value, scene, onChange }) {
+const fieldCode = `import { InputNumber, Progress } from "antd";
+import {
+  MmdProvider,
+  MmdRenderer,
+  type FieldRendererProps,
+} from "mmd-renderer";
+
+function InventoryMeter({ value, scene, onChange }: FieldRendererProps) {
   if (scene === "form" || scene === "search") {
     return (
       <InputNumber
@@ -57,7 +76,13 @@ const fieldCode = `function InventoryMeter({ value, scene, onChange }) {
   <MmdRenderer model="Product" view="listview" />
 </MmdProvider>`;
 
-const actionCode = `const duplicate: ActionHandler = async (context, action) => {
+const actionCode = `import {
+  MmdProvider,
+  MmdRenderer,
+  type ActionHandler,
+} from "mmd-renderer";
+
+const duplicate: ActionHandler = async (context, action) => {
   const id = context.record?.[context.keyField ?? "id"];
   if (id == null) return;
 
@@ -73,24 +98,107 @@ const actionCode = `const duplicate: ActionHandler = async (context, action) => 
   <MmdRenderer model="Product" view="listview" />
 </MmdProvider>`;
 
-const serverCode = `import { createApp } from "./app";
+const serverCode = `import { Hono } from "hono";
+import type { MetaRequest } from "mmd-contracts";
+import {
+  MmdEngine,
+  MmdRegistry,
+  type MmdActionHandler,
+  type ExecuteActionRequest,
+  type QueryListRequest,
+  type QueryOneRequest,
+  type SaveRequest,
+} from "mmd-engine";
+import { productAdapter } from "./product.adapter";
+import { productModel } from "./product.model";
 
-const app = createApp({
-  corsOrigin: "http://localhost:3000",
+const registry = new MmdRegistry().registerModel(productModel);
+const duplicate: MmdActionHandler = async ({ ids, engine, model }) => {
+  const data: Record<string, unknown>[] = [];
+  for (const id of ids) {
+    const source = await engine.queryOne({ model: model.name, id });
+    if (!source) continue;
+    data.push(await engine.save({
+      model: model.name,
+      data: {
+        name: String(source.name) + " (Copy)",
+        price: source.price,
+        inventory: source.inventory,
+      },
+    }));
+  }
+  return { affected: data.length, data };
+};
+
+const engine = new MmdEngine({
+  registry,
+  adapter: productAdapter,
+  actions: { duplicate },
+});
+const app = new Hono();
+
+app.post("/api/mmd/meta", async (c) => {
+  const input = await c.req.json<MetaRequest>();
+  return c.json(engine.getMeta(input));
+});
+app.post("/api/mmd/query-list", async (c) => {
+  const input = await c.req.json<QueryListRequest>();
+  return c.json(await engine.queryList(input));
+});
+app.post("/api/mmd/query-one", async (c) => {
+  const input = await c.req.json<QueryOneRequest>();
+  return c.json({ data: await engine.queryOne(input) });
+});
+app.post("/api/mmd/save", async (c) => {
+  const input = await c.req.json<SaveRequest>();
+  return c.json({ data: await engine.save(input) });
+});
+app.post("/api/mmd/remove", async (c) => {
+  const input = await c.req.json<{
+    model: string;
+    id?: string;
+    ids?: string[];
+  }>();
+  const ids = input.ids ?? (input.id ? [input.id] : []);
+  const data = (await Promise.all(
+    ids.map((id) => engine.remove({ model: input.model, id }))
+  )).filter(Boolean);
+  return c.json({ success: true, affected: data.length, data });
+});
+app.post("/api/mmd/actions/:action", async (c) => {
+  const input = await c.req.json<Omit<ExecuteActionRequest, "action">>();
+  return c.json(await engine.executeAction({
+    ...input,
+    action: c.req.param("action"),
+  }));
 });
 
 export default app;`;
+
+const protocolCode = `POST /api/mmd/meta
+POST /api/mmd/query-list
+POST /api/mmd/query-one
+POST /api/mmd/save
+POST /api/mmd/remove
+POST /api/mmd/actions/:action
+
+# Interactive OpenAPI reference
+GET  https://mmd-api.zyking.xyz/docs`;
 
 export function DocsContent() {
   const { config, t } = useMmd();
   const apiDocsUrl = `${config.api.baseUrl.replace(/\/?api\/?$/, "")}/docs`;
 
   const sections = [
-    ["01", "docs.quickStart", quickStartCode, "shell"],
-    ["02", "docs.provider", providerCode, "tsx"],
-    ["03", "docs.fields", fieldCode, "typescript"],
-    ["04", "docs.actions", actionCode, "typescript"],
-    ["05", "docs.server", serverCode, "typescript"],
+    ["01", "docs.quickStart", [
+      { code: installCode, label: "shell" },
+      { code: modelCode, label: "product.model.ts" },
+    ]],
+    ["02", "docs.provider", [{ code: providerCode, label: "tsx" }]],
+    ["03", "docs.fields", [{ code: fieldCode, label: "typescript" }]],
+    ["04", "docs.actions", [{ code: actionCode, label: "typescript" }]],
+    ["05", "docs.server", [{ code: serverCode, label: "typescript" }]],
+    ["06", "docs.protocol", [{ code: protocolCode, label: "http" }]],
   ] as const;
 
   return (
@@ -150,10 +258,12 @@ export function DocsContent() {
             </div>
           </section>
 
-          {sections.map(([index, title, code, language]) => (
+          {sections.map(([index, title, blocks]) => (
             <section className="doc-section" id={`section-${index}`} key={index}>
               <div className="doc-section-title"><span>{index}</span><h2>{t(title)}</h2></div>
-              <CodeBlock code={code} label={language} />
+              {blocks.map(({ code, label }) => (
+                <CodeBlock code={code} label={label} key={label} />
+              ))}
             </section>
           ))}
         </div>

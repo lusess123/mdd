@@ -1,5 +1,6 @@
 "use client";
 
+import { MmdRequestError } from "mmd-renderer";
 import {
   createContext,
   useCallback,
@@ -29,18 +30,8 @@ interface ApiErrorBody {
   error?: {
     code?: string;
     message?: string;
+    details?: unknown;
   };
-}
-
-export class MmdRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status?: number,
-    readonly code?: string,
-  ) {
-    super(message);
-    this.name = "MmdRequestError";
-  }
 }
 
 export interface MmdProviderProps
@@ -67,7 +58,7 @@ function joinUrl(baseUrl: string, path: string) {
   return `${baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
 }
 
-async function parseResponse<T>(
+export async function parseResponse<T>(
   response: Response,
   resolveErrorMessage: (code: string | undefined, fallback: string) => string,
 ): Promise<T> {
@@ -81,6 +72,7 @@ async function parseResponse<T>(
       resolveErrorMessage(body?.error?.code, fallback),
       response.status,
       body?.error?.code,
+      body?.error?.details,
     );
   }
 

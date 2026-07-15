@@ -45,6 +45,25 @@ function parseRequestBody(body: BodyInit | null | undefined): unknown {
   }
 }
 
+export function describeRequestFailure(error: unknown) {
+  const requestError = error instanceof MmdRequestError ? error : undefined;
+  return {
+    apiOnline: requestError?.status !== undefined,
+    response: {
+      error: {
+        message: error instanceof Error ? error.message : error,
+        ...(requestError?.status === undefined
+          ? {}
+          : { status: requestError.status }),
+        ...(requestError?.code ? { code: requestError.code } : {}),
+        ...(requestError?.details === undefined
+          ? {}
+          : { details: requestError.details }),
+      },
+    },
+  };
+}
+
 function InventoryMeter({
   value,
   scene,
@@ -132,24 +151,13 @@ export function PlaygroundContent() {
         setApiOnline(true);
         return response;
       } catch (error) {
-        const requestError = error instanceof MmdRequestError ? error : undefined;
+        const failure = describeRequestFailure(error);
         setLogs((current) =>
           current.map((log) =>
             log.id === id
               ? {
                   ...log,
-                  response: {
-                    error: {
-                      message: error instanceof Error ? error.message : error,
-                      ...(requestError?.status === undefined
-                        ? {}
-                        : { status: requestError.status }),
-                      ...(requestError?.code ? { code: requestError.code } : {}),
-                      ...(requestError?.details === undefined
-                        ? {}
-                        : { details: requestError.details })
-                    }
-                  },
+                  response: failure.response,
                   status: "error",
                   duration: Math.round(performance.now() - startedAt)
                 }
@@ -157,7 +165,7 @@ export function PlaygroundContent() {
           )
         );
         // 4xx/5xx 说明 API 可达；只有网络或超时错误才标记离线。
-        setApiOnline(requestError?.status === undefined ? false : true);
+        setApiOnline(failure.apiOnline);
         throw error;
       }
     },

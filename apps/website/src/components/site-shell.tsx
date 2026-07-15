@@ -59,7 +59,7 @@ export function SiteShell({ children }: PropsWithChildren) {
       <main className="site-main">{children}</main>
       <footer className="site-footer">
         <span>MMD · {t("footer.tagline")}</span>
-        <span>Hono / Next.js / Cloudflare</span>
+        <span>Contracts / Engine / Renderer</span>
       </footer>
     </div>
   );

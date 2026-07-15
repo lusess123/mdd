@@ -34,7 +34,7 @@ export const modelCode = `const productModel: ModelDefinition = {
       name: "archive",
       label: "Archive",
       placement: "row",
-      confirm: "Archive this product?",
+      confirm: true,
     },
     { name: "duplicate", label: "Duplicate", placement: "row" },
   ],
