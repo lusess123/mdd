@@ -4,31 +4,34 @@ import { createApp, createWorker } from "./index";
 
 describe("MMD demo scheduled cleanup", () => {
   it("removes sessions inactive for seven days", async () => {
-    const calls: Array<{ databaseUrl: string; cutoff: Date }> = [];
-    const worker = createWorker(createApp(), async (databaseUrl, cutoff) => {
-      calls.push({ databaseUrl, cutoff });
+    const calls: Array<{ connectionString: string; cutoff: Date }> = [];
+    const worker = createWorker(createApp(), async (connectionString, cutoff) => {
+      calls.push({ connectionString, cutoff });
       return { sessionsDeleted: 3, productsDeleted: 9 };
     });
     const scheduledTime = Date.parse("2026-07-15T03:00:00.000Z");
 
     await worker.scheduled(
       { scheduledTime },
-      { DATABASE_URL: "postgres://demo" }
+      { HYPERDRIVE: { connectionString: "postgres://hyperdrive" } }
     );
 
     expect(calls).toEqual([
       {
-        databaseUrl: "postgres://demo",
+        connectionString: "postgres://hyperdrive",
         cutoff: new Date("2026-07-08T03:00:00.000Z")
       }
     ]);
   });
 
-  it("fails visibly when the database binding is missing", async () => {
+  it("fails visibly instead of falling back to a production DATABASE_URL", async () => {
     const worker = createWorker(createApp());
 
-    expect(worker.scheduled({ scheduledTime: Date.now() }, {})).rejects.toThrow(
-      "DATABASE_URL is required"
-    );
+    expect(
+      worker.scheduled(
+        { scheduledTime: Date.now() },
+        { DATABASE_URL: "postgres://legacy-production-url" } as never
+      )
+    ).rejects.toThrow("HYPERDRIVE binding is required");
   });
 });

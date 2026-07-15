@@ -91,7 +91,8 @@ describe("MMD demo API", () => {
             "X-Request-Id": "request_database-123"
           },
           body: JSON.stringify({ model: "Product" })
-        }
+        },
+        { DATABASE_URL: "postgres://legacy-production-url" } as never
       );
 
       expect(response.status).toBe(500);
@@ -106,13 +107,67 @@ describe("MMD demo API", () => {
         expect.objectContaining({
           event: "mmd_api_unhandled_error",
           error: expect.objectContaining({
-            message: "DATABASE_URL is required"
+            message: "Database connection is required"
           })
         })
       );
     } finally {
       consoleError.mockRestore();
     }
+  });
+
+  it("uses the Hyperdrive connection for Worker requests", async () => {
+    const calls: Array<{ connectionString: string; sessionId: string }> = [];
+    let disconnects = 0;
+    const hyperdriveApp = createApp({
+      createRuntime: async (connectionString, sessionId) => {
+        calls.push({ connectionString, sessionId });
+        const runtime = createMemoryRuntime();
+        return {
+          ...runtime,
+          dispose: async () => {
+            disconnects += 1;
+          }
+        };
+      }
+    });
+
+    const response = await hyperdriveApp.request(
+      "/api/products",
+      { headers: { "X-MMD-Session": "session_hyperdrive" } },
+      {
+        HYPERDRIVE: {
+          connectionString: "postgres://hyperdrive"
+        }
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(calls).toEqual([
+      {
+        connectionString: "postgres://hyperdrive",
+        sessionId: "session_hyperdrive"
+      }
+    ]);
+    expect(disconnects).toBe(1);
+  });
+
+  it("uses an explicitly configured database URL for local Bun requests", async () => {
+    const connectionStrings: string[] = [];
+    const localApp = createApp({
+      databaseUrl: "postgres://local",
+      createRuntime: async (connectionString) => {
+        connectionStrings.push(connectionString);
+        return createMemoryRuntime();
+      }
+    });
+
+    const response = await localApp.request("/api/products", {
+      headers: { "X-MMD-Session": "session_local" }
+    });
+
+    expect(response.status).toBe(200);
+    expect(connectionStrings).toEqual(["postgres://local"]);
   });
 
   it("returns a request id and logs a safe stack for unexpected errors", async () => {

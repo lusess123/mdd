@@ -48,7 +48,12 @@ export function ViewEngine({
   const { t } = useMmd();
   const slotProps = { view, model, id };
   return (
-    <Space orientation="vertical" size="middle" style={{ display: "flex" }}>
+    <Space
+      className="mmd-view-stack"
+      orientation="vertical"
+      size="middle"
+      style={{ display: "flex" }}
+    >
       {renderSlot(slots.beforeView, slotProps)}
       {view.dataContainers.map((container) => {
         const key = container.key ?? `${container.type}-${container.name}`;
@@ -213,19 +218,22 @@ export function MmdView({
   };
   return (
     <>
-      <ViewEngine
-        key={refreshVersion}
-        view={view}
-        model={model}
-        id={id}
-        where={where}
-        slots={slots}
-        openView={setModal}
-        close={onClose}
-        refresh={refresh}
-        onRowChange={onRowChange}
-      />
+      <div className="mmd-view-root">
+        <ViewEngine
+          key={refreshVersion}
+          view={view}
+          model={model}
+          id={id}
+          where={where}
+          slots={slots}
+          openView={setModal}
+          close={onClose}
+          refresh={refresh}
+          onRowChange={onRowChange}
+        />
+      </div>
       <Modal
+        rootClassName="mmd-modal-root"
         open={Boolean(modal)}
         footer={null}
         width="min(1000px, 92vw)"

@@ -4,7 +4,7 @@
 
 MMD is a metadata-driven full-stack admin toolkit. Define a model once, let `mmd-engine` execute safe data operations, and let `mmd-renderer` generate list, search, detail, create, and edit experiences.
 
-The repository contains a complete Product demo: a Hono API, Neon PostgreSQL, a statically exported Next.js site, a custom inventory field, publish/archive/duplicate actions, Chinese and English UI, and live API documentation.
+The repository contains a complete Product demo: a Hono API, Neon PostgreSQL through Cloudflare Hyperdrive, a statically exported Next.js site, a custom inventory field, publish/archive/duplicate actions, Chinese and English UI, and live API documentation.
 
 ## Run locally
 
@@ -22,7 +22,7 @@ bun run dev
 - API reference: <http://localhost:8787/docs>
 - OpenAPI: <http://localhost:8787/openapi.json>
 
-`DATABASE_URL` is required. The runnable API never falls back to in-memory data; the memory adapter is retained only as an adapter example and test fixture. Do not commit the connection string.
+Local Bun development requires `DATABASE_URL`. The runnable API never falls back to in-memory data; the memory adapter is retained only as an adapter example and test fixture. Do not commit the connection string.
 
 ## Deployment endpoints
 
@@ -30,7 +30,7 @@ bun run dev
 - API: <https://mmd-api.zyking.xyz>
 - API reference: <https://mmd-api.zyking.xyz/docs>
 
-The statically exported Next.js site is served by Cloudflare Workers Static Assets. The Hono API runs on Cloudflare Workers and stores demo data in Neon. Production sessions use a hash of Cloudflare's source IP; local development supports a cookie or `X-MMD-Session`.
+The statically exported Next.js site is served by Cloudflare Workers Static Assets. The Hono API uses `PrismaPg` and the `HYPERDRIVE` binding to access Neon. `DATABASE_URL` is reserved for migrations and explicit Hyperdrive configuration. Production sessions use a hash of Cloudflare's source IP; local development supports a cookie or `X-MMD-Session`.
 
 ## Core packages
 
@@ -63,11 +63,13 @@ All three implementations and their tests are included in this repository. The n
 
 The API transport, token/headers, router, error callbacks, locale, and messages are independently replaceable. See [Quick start (Chinese)](./docs/快速开始.md) and [Extension guide (Chinese)](./docs/扩展开发.md).
 
+The website and rendered management UI are responsive across common desktop, tablet, and mobile widths. Mobile layouts keep navigation, tables, actions, and dialogs usable without clipping.
+
 ## Repository
 
 ```text
 apps/website          Static Next.js site, docs, and Playground
-apps/demo-api         Hono API, Prisma, and Neon adapter
+apps/demo-api         Hono API, PrismaPg, Hyperdrive, and Neon
 packages/mmd-contracts
 packages/mmd-engine
 packages/mmd-renderer

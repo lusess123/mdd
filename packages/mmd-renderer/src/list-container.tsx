@@ -165,9 +165,15 @@ export function ListContainer({
       title={translateMetadataLabel(t, "models", container.name, container.label)}
       className="mmd-list-container"
     >
-      <Space orientation="vertical" size="middle" style={{ display: "flex" }}>
+      <Space
+        className="mmd-list-content"
+        orientation="vertical"
+        size="middle"
+        style={{ display: "flex" }}
+      >
         {searchFields.length > 0 ? (
           <Form
+            className="mmd-search-form"
             layout="inline"
             onFinish={(values) => {
               setPage(1);
@@ -184,7 +190,7 @@ export function ListContainer({
               </Form.Item>
             ))}
             <Form.Item>
-              <Space>
+              <Space className="mmd-search-actions">
                 <Button htmlType="submit" type="primary">
                   {t("common.search")}
                 </Button>
@@ -202,28 +208,38 @@ export function ListContainer({
           </Form>
         ) : null}
         {pageActions.length > 0 ? (
-          <ActionButtons actions={pageActions} context={actionContext} size="middle" />
+          <div className="mmd-page-actions">
+            <ActionButtons actions={pageActions} context={actionContext} size="middle" />
+          </div>
         ) : null}
         {error ? <Alert type="error" showIcon title={error.message} /> : null}
-        <Table<MmdRecord>
-          rowKey={(row) => String(row[keyField])}
-          columns={columns}
-          dataSource={rows}
-          loading={loading}
-          locale={{ emptyText: t("common.noData") }}
-          scroll={{ x: "max-content" }}
-          pagination={{ current: page, pageSize, total, showSizeChanger: true }}
-          rowSelection={
-            pageActions.some((action) => action.placement === "bulk")
-              ? {
-                  selectedRowKeys: selectedIds,
-                  onChange: (keys) => setSelectedIds(keys.map(String)),
-                }
-              : undefined
-          }
-          onChange={handleTableChange}
-          onRow={(record) => ({ onClick: () => onRowChange?.(record) })}
-        />
+        <div className="mmd-table-region">
+          <Table<MmdRecord>
+            rowKey={(row) => String(row[keyField])}
+            columns={columns}
+            dataSource={rows}
+            loading={loading}
+            locale={{ emptyText: t("common.noData") }}
+            scroll={{ x: "max-content" }}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              responsive: true,
+              showSizeChanger: true,
+            }}
+            rowSelection={
+              pageActions.some((action) => action.placement === "bulk")
+                ? {
+                    selectedRowKeys: selectedIds,
+                    onChange: (keys) => setSelectedIds(keys.map(String)),
+                  }
+                : undefined
+            }
+            onChange={handleTableChange}
+            onRow={(record) => ({ onClick: () => onRowChange?.(record) })}
+          />
+        </div>
       </Space>
     </Card>
   );

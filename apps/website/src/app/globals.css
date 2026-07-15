@@ -41,6 +41,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: clip;
   color: var(--ink);
   background: transparent;
   font-family: var(--font-sans);
@@ -87,6 +88,7 @@ pre,
 
 .site-frame {
   min-height: 100vh;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -224,6 +226,7 @@ pre,
 
 .site-main {
   width: min(1380px, 100%);
+  min-width: 0;
   margin: 0 auto;
   padding: 0 34px;
   flex: 1;
@@ -284,6 +287,7 @@ pre,
 
 .hero-copy {
   position: relative;
+  min-width: 0;
 }
 
 .hero-copy::after {
@@ -446,6 +450,7 @@ pre,
 
 .hero-console {
   position: relative;
+  min-width: 0;
   overflow: visible;
   border: var(--line);
   border-radius: 15px 8px 13px 7px / 9px 14px 8px 13px;
@@ -541,6 +546,7 @@ pre,
 }
 
 .hero-renderer .mmd-list-container {
+  min-width: 0;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
 }
@@ -780,6 +786,9 @@ pre,
 }
 
 .code-block {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   border: var(--line);
   border-radius: 11px 6px 10px 7px / 7px 10px 6px 11px;
@@ -797,6 +806,13 @@ pre,
   color: var(--ink);
   background: var(--yellow);
   font: 900 9px var(--font-mono);
+}
+
+.code-toolbar > span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .code-toolbar button {
@@ -817,6 +833,9 @@ pre,
 
 .code-block pre {
   overflow: auto;
+  max-width: 100%;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   margin: 0;
   padding: 20px;
   color: #d8f0df;
@@ -900,6 +919,7 @@ pre,
 }
 
 .docs-body {
+  width: 100%;
   min-width: 0;
 }
 
@@ -1397,7 +1417,9 @@ pre,
   background: #202622;
   font-size: 9px;
   line-height: 1.68;
-  white-space: pre-wrap;
+  white-space: pre;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .request-history {
@@ -1608,7 +1630,10 @@ pre,
   .topbar {
     grid-template-columns: 1fr auto;
     min-height: 58px;
-    padding-inline: 14px;
+    padding-inline:
+      max(14px, env(safe-area-inset-left))
+      max(14px, env(safe-area-inset-right));
+    padding-top: max(7px, env(safe-area-inset-top));
   }
 
   .brand-mark {
@@ -1623,8 +1648,12 @@ pre,
     left: 0;
     z-index: 40;
     justify-content: space-around;
-    min-height: 56px;
-    padding: 6px 7px;
+    min-height: calc(56px + env(safe-area-inset-bottom));
+    padding:
+      6px
+      max(7px, env(safe-area-inset-right))
+      calc(6px + env(safe-area-inset-bottom))
+      max(7px, env(safe-area-inset-left));
     border-top: var(--line);
     background: rgba(255, 248, 231, .98);
     box-shadow: 0 -3px 0 rgba(37, 35, 31, .12);
@@ -1649,12 +1678,13 @@ pre,
   }
 
   .site-main {
-    padding: 0 16px;
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-left: max(16px, env(safe-area-inset-left));
   }
 
   .site-footer {
     width: calc(100% - 32px);
-    margin-bottom: 56px;
+    margin-bottom: calc(56px + env(safe-area-inset-bottom));
   }
 
   .hero {
@@ -1702,12 +1732,18 @@ pre,
   }
 
   .hero-renderer {
-    overflow-x: auto;
+    overflow: hidden;
     padding: 8px;
   }
 
   .hero-renderer .mmd-list-container {
-    min-width: 520px;
+    min-width: 0;
+  }
+
+  .hero-renderer .mmd-view-root,
+  .hero-renderer .mmd-table-region,
+  .hero-renderer .ant-table-wrapper {
+    max-width: 100%;
   }
 
   .pipeline-grid,
@@ -1734,15 +1770,43 @@ pre,
     padding-bottom: 33px;
   }
 
+  .intro-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .intro-actions > .button,
+  .intro-actions > .api-indicator {
+    max-width: 100%;
+  }
+
   .docs-layout {
     grid-template-columns: 1fr;
+    gap: 28px;
   }
 
   .docs-sidebar {
-    position: static;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    position: sticky;
+    top: calc(58px + env(safe-area-inset-top));
+    z-index: 20;
+    display: flex;
+    flex-direction: row;
+    max-width: calc(100vw - 32px);
+    overflow-x: auto;
+    padding: 8px;
+    scroll-padding-inline: 8px;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
     transform: none;
+  }
+
+  .docs-sidebar a {
+    flex: none;
+    min-height: 38px;
+    align-items: center;
+    scroll-snap-align: start;
+    white-space: nowrap;
   }
 
   .sidebar-label,
@@ -1757,6 +1821,7 @@ pre,
 
   .default-panel-head > code {
     line-height: 1.5;
+    overflow-wrap: anywhere;
   }
 
   .example-flow {
@@ -1777,6 +1842,57 @@ pre,
     grid-column: 1 / -1;
   }
 
+  .offline-banner {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .panel-titlebar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .panel-titlebar > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .panel-path {
+    overflow-wrap: anywhere;
+  }
+
+  .metadata-renderer-panel > .ant-app {
+    padding: 8px;
+  }
+
+  .demo-extension-note {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .demo-extension-note::after {
+    display: none;
+  }
+
+  .inspector-code {
+    min-height: 240px;
+    max-height: min(54dvh, 420px);
+    padding: 14px;
+  }
+
+  .mmd-global-loading {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .mmd-toast {
+    top: calc(70px + env(safe-area-inset-top));
+    width: max-content;
+    max-width: calc(100vw - 32px);
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
     gap: 0;
@@ -1792,8 +1908,18 @@ pre,
     display: none;
   }
 
+  .hero-actions .button {
+    flex: 1 1 130px;
+  }
+
+  .install-line {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
   .hero-console {
     margin-inline: 0;
+    transform: none;
   }
 
   .hero-console::before {
@@ -1809,12 +1935,41 @@ pre,
     border-bottom: 1.5px solid var(--ink);
   }
 
-  .docs-sidebar {
-    grid-template-columns: 1fr;
+  .default-grid > div:last-child {
+    border-bottom: 0;
   }
 
   .page-intro h1 {
     font-size: 35px;
+  }
+
+  .code-block pre {
+    padding: 14px;
+    font-size: 10px;
+  }
+
+  .example-card {
+    grid-template-columns: 36px minmax(0, 1fr) 30px;
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .example-file {
+    overflow-wrap: anywhere;
+  }
+
+  .history-list button {
+    grid-template-columns: 8px 32px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .history-list em {
+    display: none;
+  }
+
+  .site-footer {
+    flex-direction: column;
+    gap: 6px;
   }
 }
 

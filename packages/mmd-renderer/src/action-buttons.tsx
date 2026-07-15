@@ -65,7 +65,7 @@ export function ActionButtons({
   };
 
   return (
-    <Space size="small" wrap>
+    <Space className="mmd-action-buttons" size="small" wrap>
       {visibleActions.map((action, index) => {
         const key = actionKey(action, index);
         const label = actionLabel(action, t);

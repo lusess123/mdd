@@ -118,9 +118,15 @@ export function FormContainer({
       title={translateMetadataLabel(t, "models", container.name, container.label)}
       className="mmd-form-container"
     >
-      <Space orientation="vertical" size="middle" style={{ display: "flex" }}>
+      <Space
+        className="mmd-form-content"
+        orientation="vertical"
+        size="middle"
+        style={{ display: "flex" }}
+      >
         {error ? <Alert type="error" showIcon title={error.message} /> : null}
         <Form<MmdRecord>
+          className="mmd-edit-form"
           form={form}
           layout="vertical"
           onValuesChange={(_change, values) => setDraft(values)}
@@ -157,21 +163,23 @@ export function FormContainer({
             </Form.Item>
           ))}
         </Form>
-        <ActionButtons
-          actions={container.actions?.length ? container.actions : defaultActions}
-          record={draft}
-          context={{
-            model: container.name,
-            keyField,
-            client,
-            record: draft,
-            openView,
-            submit,
-            close,
-            refresh,
-          }}
-          size="middle"
-        />
+        <div className="mmd-form-actions">
+          <ActionButtons
+            actions={container.actions?.length ? container.actions : defaultActions}
+            record={draft}
+            context={{
+              model: container.name,
+              keyField,
+              client,
+              record: draft,
+              openView,
+              submit,
+              close,
+              refresh,
+            }}
+            size="middle"
+          />
+        </div>
       </Space>
     </Card>
   );

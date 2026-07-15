@@ -4,6 +4,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "Operation to run"
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - configure-hyperdrive
+          - update-hyperdrive
 
 permissions:
   contents: read
@@ -16,8 +26,84 @@ env:
   BUN_VERSION: "1.3.4"
 
 jobs:
+  configure-hyperdrive:
+    name: Configure Hyperdrive
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.operation == 'configure-hyperdrive' ||
+      inputs.operation == 'update-hyperdrive')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Create or explicitly update MMD Hyperdrive
+        working-directory: apps/demo-api
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          UPDATE_CONNECTION: "${{ inputs.operation == 'update-hyperdrive' }}"
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$DATABASE_URL"
+
+          name="mmd-postgres-prod"
+          direct_database_url="$(bun -e '
+            const value = Bun.env.DATABASE_URL;
+            if (!value) throw new Error("DATABASE_URL is required");
+            const url = new URL(value);
+            url.hostname = url.hostname.replace("-pooler.", ".");
+            process.stdout.write(url.toString());
+          ')"
+
+          find_id() {
+            bunx wrangler hyperdrive list | awk -F '│' -v name="$name" '
+              $3 ~ "^[[:space:]]*" name "[[:space:]]*$" {
+                gsub(/[[:space:]]/, "", $2)
+                print $2
+                exit
+              }
+            '
+          }
+
+          hyperdrive_id="$(find_id)"
+          if [ -z "$hyperdrive_id" ]; then
+            bunx wrangler hyperdrive create "$name" \
+              --connection-string="$direct_database_url" \
+              --sslmode=require \
+              --origin-connection-limit=5 \
+              --caching-disabled
+
+            for attempt in {1..6}; do
+              hyperdrive_id="$(find_id)"
+              [ -n "$hyperdrive_id" ] && break
+              sleep 5
+            done
+          elif [ "$UPDATE_CONNECTION" = "true" ]; then
+            bunx wrangler hyperdrive update "$hyperdrive_id" \
+              --connection-string="$direct_database_url" \
+              --sslmode=require \
+              --origin-connection-limit=5 \
+              --caching-disabled
+          fi
+
+          if [[ ! "$hyperdrive_id" =~ ^[0-9a-f]{32}$ ]]; then
+            echo "Unable to resolve the MMD Hyperdrive id" >&2
+            exit 1
+          fi
+
+          echo "Hyperdrive ID: \`$hyperdrive_id\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit this ID to apps/demo-api/wrangler.jsonc before deployment." \
+            >> "$GITHUB_STEP_SUMMARY"
+
   validate:
     name: Validate repository
+    if: github.event_name == 'push' || inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,8 +120,6 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     environment: production
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -43,20 +127,28 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
       - name: Check database credentials
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: test -n "$DATABASE_URL"
       - name: Migrate database through direct connection
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          DATABASE_URL="${DATABASE_URL/-pooler./.}" \
-            bun --cwd=apps/demo-api run db:migrate
+          set -euo pipefail
+          direct_database_url="$(bun -e '
+            const value = Bun.env.DATABASE_URL;
+            if (!value) throw new Error("DATABASE_URL is required");
+            const url = new URL(value);
+            url.hostname = url.hostname.replace("-pooler.", ".");
+            process.stdout.write(url.toString());
+          ')"
+          DATABASE_URL="$direct_database_url" bun --cwd=apps/demo-api run db:migrate
 
   deploy-api:
     name: Deploy Hono API
     needs: [validate, migrate]
     runs-on: ubuntu-latest
     environment: production
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -65,12 +157,25 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build:packages
       - name: Check deployment credentials
-        run: test -n "$CLOUDFLARE_API_TOKEN" && test -n "$DATABASE_URL"
-      - name: Sync Worker database secret
-        working-directory: apps/demo-api
-        run: printf '%s' "$DATABASE_URL" | bunx wrangler secret put DATABASE_URL
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: test -n "$CLOUDFLARE_API_TOKEN"
       - name: Deploy API Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun --cwd=apps/demo-api run deploy
+      - name: Remove legacy Worker database secret
+        working-directory: apps/demo-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          secrets_json="$(bunx wrangler secret list --format json)"
+          if jq -e 'any(.name == "DATABASE_URL")' \
+            <<< "$secrets_json" > /dev/null; then
+            printf 'y\n' | bunx wrangler secret delete DATABASE_URL
+          fi
       - name: Verify API
         run: |
           curl --fail --retry-all-errors --retry 24 --retry-delay 5 --retry-max-time 120 \
@@ -87,8 +192,6 @@ jobs:
     needs: deploy-api
     runs-on: ubuntu-latest
     environment: production
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -97,9 +200,13 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build:packages
       - name: Check Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: test -n "$CLOUDFLARE_API_TOKEN"
       - run: bun --cwd=apps/website run build
       - name: Deploy website
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun --cwd=apps/website run deploy
       - name: Verify website
         run: >-
