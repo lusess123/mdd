@@ -1,6 +1,6 @@
 import type { MmdDataAdapter, FilterExpression } from "mmd-engine";
 
-import { seededProducts } from "./memory-adapter";
+import { seededProducts } from "./seed-products";
 
 type Row = Record<string, unknown>;
 type Query = Record<string, unknown>;
@@ -10,21 +10,38 @@ interface ProductDelegate {
   findMany(args: Query): Promise<unknown[]>;
   findFirst(args: Query): Promise<unknown | null>;
   create(args: Query): Promise<unknown>;
-  createMany(args: Query): Promise<unknown>;
-  updateMany(args: Query): Promise<{ count: number }>;
+  update(args: Query): Promise<unknown>;
   deleteMany(args: Query): Promise<{ count: number }>;
 }
 
 interface DemoSessionDelegate {
   count(args: Query): Promise<number>;
-  createMany(args: Query): Promise<{ count: number }>;
 }
 
 export interface ProductPrismaClient {
   product: ProductDelegate;
   demoSession: DemoSessionDelegate;
+  $executeRawUnsafe(query: string, ...values: unknown[]): Promise<number>;
   $disconnect(): Promise<void>;
 }
+
+const SEED_COLUMN_COUNT = 11;
+const SEED_QUERY = `
+  INSERT INTO "mmd_products" (
+    "id", "session_id", "name", "sku", "cover", "price", "tags",
+    "status", "inventory", "created_at", "updated_at"
+  )
+  VALUES ${seededProducts
+    .map((_, index) => {
+      const first = index * SEED_COLUMN_COUNT + 1;
+      return `(${Array.from(
+        { length: SEED_COLUMN_COUNT },
+        (_value, offset) => `$${first + offset}`
+      ).join(", ")})`;
+    })
+    .join(",\n    ")}
+  ON CONFLICT ("session_id", "sku") DO NOTHING
+`;
 
 function where(expression?: FilterExpression): Query {
   if (!expression) return {};
@@ -90,20 +107,20 @@ export class PrismaProductAdapter implements MmdDataAdapter {
     });
     if (knownSession > 0) return;
 
-    await this.client.product.createMany({
-      data: seededProducts.map(({ id: _id, ...product }) => ({
-        ...product,
-        id: crypto.randomUUID(),
-        sessionId: this.sessionId,
-        createdAt: new Date(product.createdAt),
-        updatedAt: new Date(product.updatedAt)
-      })),
-      skipDuplicates: true
-    });
-    await this.client.demoSession.createMany({
-      data: [{ id: this.sessionId }],
-      skipDuplicates: true
-    });
+    const values = seededProducts.flatMap((product) => [
+      crypto.randomUUID(),
+      this.sessionId,
+      product.name,
+      product.sku,
+      product.cover,
+      product.price,
+      product.tags,
+      product.status,
+      product.inventory,
+      new Date(product.createdAt),
+      new Date(product.updatedAt)
+    ]);
+    await this.client.$executeRawUnsafe(SEED_QUERY, ...values);
   }
 
   async findMany(input: Parameters<MmdDataAdapter["findMany"]>[0]) {
@@ -141,12 +158,18 @@ export class PrismaProductAdapter implements MmdDataAdapter {
 
   async update(input: Parameters<MmdDataAdapter["update"]>[0]) {
     const filter = { sessionId: this.sessionId, [input.key]: input.value };
-    const result = await this.client.product.updateMany({
+    const existing = await this.client.product.findFirst({
       where: filter,
-      data: input.data
+      select: { id: true }
     });
-    if (result.count === 0) throw new Error("Record not found");
-    return row(await this.client.product.findFirst({ where: filter }));
+    const id = (existing as Row | null)?.id;
+    if (typeof id !== "string") throw new Error("Record not found");
+    return row(
+      await this.client.product.update({
+        where: { id, sessionId: this.sessionId },
+        data: input.data
+      })
+    );
   }
 
   async remove(input: Parameters<MmdDataAdapter["remove"]>[0]) {

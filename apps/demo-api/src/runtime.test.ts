@@ -30,11 +30,6 @@ describe("NeonRuntimeFactory", () => {
             return sessionMarkers.has((query.where as { id: string }).id)
               ? 1
               : 0;
-          },
-          async createMany(query) {
-            const data = query.data as Array<{ id: string }>;
-            data.forEach(({ id }) => sessionMarkers.add(id));
-            return { count: data.length };
           }
         },
         product: {
@@ -52,15 +47,16 @@ describe("NeonRuntimeFactory", () => {
           async create() {
             throw new Error("Not used");
           },
-          async createMany() {
-            return { count: 0 };
-          },
-          async updateMany() {
-            return { count: 0 };
+          async update() {
+            throw new Error("Not used");
           },
           async deleteMany() {
             return { count: 0 };
           }
+        },
+        async $executeRawUnsafe(_query, ...values) {
+          sessionMarkers.add(String(values[1]));
+          return 3;
         },
         async $disconnect() {
           disconnects += 1;
@@ -107,9 +103,6 @@ describe("NeonRuntimeFactory", () => {
       demoSession: {
         async count() {
           throw new Error("seed failed");
-        },
-        async createMany() {
-          return { count: 0 };
         }
       },
       product: {
@@ -125,15 +118,15 @@ describe("NeonRuntimeFactory", () => {
         async create() {
           throw new Error("Not used");
         },
-        async createMany() {
-          return { count: 0 };
-        },
-        async updateMany() {
-          return { count: 0 };
+        async update() {
+          throw new Error("Not used");
         },
         async deleteMany() {
           return { count: 0 };
         }
+      },
+      async $executeRawUnsafe() {
+        throw new Error("Not used");
       },
       async $disconnect() {
         disconnects += 1;
@@ -158,9 +151,6 @@ describe("NeonRuntimeFactory", () => {
       demoSession: {
         async count() {
           return 1;
-        },
-        async createMany() {
-          return { count: 0 };
         }
       },
       product: {
@@ -176,15 +166,15 @@ describe("NeonRuntimeFactory", () => {
         async create() {
           throw new Error("Not used");
         },
-        async createMany() {
-          return { count: 0 };
-        },
-        async updateMany() {
-          return { count: 0 };
+        async update() {
+          throw new Error("Not used");
         },
         async deleteMany() {
           return { count: 0 };
         }
+      },
+      async $executeRawUnsafe() {
+        throw new Error("Not used");
       },
       async $queryRawUnsafe(query: string, ...values: unknown[]) {
         calls.push({ query, values });

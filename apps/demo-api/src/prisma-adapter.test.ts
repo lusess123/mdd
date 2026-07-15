@@ -5,16 +5,15 @@ import {
   PrismaProductAdapter,
   type ProductPrismaClient
 } from "./prisma-adapter";
+import { seededProducts } from "./seed-products";
 
 describe("PrismaProductAdapter", () => {
-  it("keeps the session isolation key out of public rows", async () => {
+  it("keeps the session key private and scopes single-row updates", async () => {
+    let updateQuery: Record<string, unknown> | undefined;
     const client: ProductPrismaClient = {
       demoSession: {
         async count() {
           return 1;
-        },
-        async createMany() {
-          return { count: 0 };
         }
       },
       product: {
@@ -25,7 +24,7 @@ describe("PrismaProductAdapter", () => {
           return [];
         },
         async findFirst() {
-          return null;
+          return { id: "product-1" };
         },
         async create(query) {
           return {
@@ -33,15 +32,20 @@ describe("PrismaProductAdapter", () => {
             ...(query.data as Record<string, unknown>)
           };
         },
-        async createMany() {
-          return { count: 0 };
-        },
-        async updateMany() {
-          return { count: 0 };
+        async update(query) {
+          updateQuery = query;
+          return {
+            id: "product-1",
+            sessionId: "private_session",
+            ...(query.data as Record<string, unknown>)
+          };
         },
         async deleteMany() {
           return { count: 0 };
         }
+      },
+      async $executeRawUnsafe() {
+        return 0;
       },
       async $disconnect() {}
     };
@@ -54,6 +58,19 @@ describe("PrismaProductAdapter", () => {
 
     expect(product).toEqual({ id: "product-1", name: "Public Product" });
     expect(product).not.toHaveProperty("sessionId");
+
+    const updated = await adapter.update({
+      model: productModel,
+      key: "id",
+      value: "product-1",
+      data: { name: "Updated Product" }
+    });
+
+    expect(updated).toEqual({ id: "product-1", name: "Updated Product" });
+    expect(updateQuery?.where).toEqual({
+      id: "product-1",
+      sessionId: "private_session"
+    });
   });
 
   it("persists a marker so a cold runtime does not restore deleted seed rows", async () => {
@@ -63,11 +80,6 @@ describe("PrismaProductAdapter", () => {
       demoSession: {
         async count(query) {
           return sessions.has((query.where as { id: string }).id) ? 1 : 0;
-        },
-        async createMany(query) {
-          const data = query.data as Array<{ id: string }>;
-          data.forEach(({ id }) => sessions.add(id));
-          return { count: data.length };
         }
       },
       product: {
@@ -83,16 +95,20 @@ describe("PrismaProductAdapter", () => {
         async create() {
           throw new Error("Not used");
         },
-        async createMany() {
-          productSeedCalls += 1;
-          return { count: 3 };
-        },
-        async updateMany() {
-          return { count: 0 };
+        async update() {
+          throw new Error("Not used");
         },
         async deleteMany() {
           return { count: 0 };
         }
+      },
+      async $executeRawUnsafe(query, ...values) {
+        expect(query).toContain('ON CONFLICT ("session_id", "sku") DO NOTHING');
+        expect(query).toContain(`$${seededProducts.length * 11}`);
+        expect(values).toHaveLength(seededProducts.length * 11);
+        sessions.add(String(values[1]));
+        productSeedCalls += 1;
+        return 3;
       },
       async $disconnect() {}
     };

@@ -34,11 +34,11 @@ const CLEANUP_QUERY = `
 async function createProductPrismaClient(
   databaseUrl: string
 ): Promise<ProductPrismaClient> {
-  const [{ PrismaNeon }, { PrismaClient }] = await Promise.all([
+  const [{ PrismaNeonHttp }, { PrismaClient }] = await Promise.all([
     import("@prisma/adapter-neon"),
     import("./generated/prisma/client")
   ]);
-  const adapter = new PrismaNeon({ connectionString: databaseUrl });
+  const adapter = new PrismaNeonHttp(databaseUrl, {});
   return new PrismaClient({ adapter }) as unknown as ProductPrismaClient;
 }
 
