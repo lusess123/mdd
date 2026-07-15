@@ -363,9 +363,10 @@ pre,
 }
 
 .install-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
   width: fit-content;
   max-width: 100%;
   margin-top: 18px;
@@ -379,20 +380,36 @@ pre,
   transform: rotate(.4deg);
 }
 
-.install-line > span:first-child {
+.install-commands {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.install-commands::-webkit-scrollbar {
+  display: none;
+}
+
+.install-command {
+  display: grid;
+  grid-template-columns: 12px max-content;
+  gap: 6px;
+}
+
+.install-command > span {
   color: var(--coral);
   font-weight: 900;
 }
 
-.install-line code {
-  overflow: hidden;
+.install-command code {
   color: var(--ink);
   white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 .install-status {
-  margin-left: 5px;
+  align-self: center;
   color: #277647;
   font-weight: 800;
 }

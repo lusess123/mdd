@@ -38,6 +38,15 @@ mmd-engine     Metadata registry, queries, writes, filters, pagination, actions
 mmd-renderer   React Provider, list/detail/forms, custom fields, and actions
 ```
 
+Install all three packages with your preferred package manager:
+
+```bash
+npm install mmd-contracts mmd-engine mmd-renderer
+pnpm add mmd-contracts mmd-engine mmd-renderer
+yarn add mmd-contracts mmd-engine mmd-renderer
+bun add mmd-contracts mmd-engine mmd-renderer
+```
+
 All three implementations and their tests are included in this repository. The names `mmd-contracts`, `mmd-engine`, and `mmd-renderer` were unregistered on npm when checked on 2026-07-15; check again immediately before publishing.
 
 ## Frontend defaults

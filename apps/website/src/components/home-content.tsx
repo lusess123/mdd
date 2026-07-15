@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { installCommands } from "../lib/install-commands";
 import { CodeBlock } from "./code-block";
 import { HomeLiveRenderer } from "./home-live-renderer";
 import { useMmd } from "./mmd-provider";
@@ -50,8 +51,14 @@ export function HomeContent() {
             </Link>
           </div>
           <div className="install-line">
-            <span>$</span>
-            <code>bun add mmd-contracts mmd-engine mmd-renderer</code>
+            <div className="install-commands">
+              {installCommands.map((command) => (
+                <div className="install-command" key={command}>
+                  <span>$</span>
+                  <code>{command}</code>
+                </div>
+              ))}
+            </div>
             <span className="install-status">{t("home.installReady")}</span>
           </div>
           <div className="hero-stats">

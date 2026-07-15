@@ -1,10 +1,9 @@
 "use client";
 
+import { installCode } from "../lib/install-commands";
 import { CodeBlock } from "./code-block";
 import { PageIntro } from "./page-intro";
 import { useMmd } from "./mmd-provider";
-
-const installCode = `bun add mmd-contracts mmd-engine mmd-renderer`;
 
 const modelCode = `import type { ModelDefinition } from "mmd-contracts";
 

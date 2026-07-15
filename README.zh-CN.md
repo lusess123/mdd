@@ -38,6 +38,15 @@ mmd-engine     元数据注册、查询、写入、过滤、分页和自定义�
 mmd-renderer   React Provider、列表/详情/表单、自定义字段和操作
 ```
 
+使用任一包管理器安装三个核心包：
+
+```bash
+npm install mmd-contracts mmd-engine mmd-renderer
+pnpm add mmd-contracts mmd-engine mmd-renderer
+yarn add mmd-contracts mmd-engine mmd-renderer
+bun add mmd-contracts mmd-engine mmd-renderer
+```
+
 三个包的源码和测试均在仓库内。`mmd-contracts`、`mmd-engine`、`mmd-renderer` 在 2026-07-15 查询时均未被 npm 注册；正式发布前需要再次确认名称。
 
 ## 前端默认实现
