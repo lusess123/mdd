@@ -14,6 +14,12 @@
   "vars": {
     "CORS_ORIGIN": "https://mmd.zyking.xyz"
   },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "a936d2b3c5c84bed9afb6e0ada7194f6"
+    }
+  ],
   "ratelimits": [
     {
       "name": "API_RATE_LIMITER",

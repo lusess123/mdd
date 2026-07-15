@@ -1,7 +1,9 @@
 import { createApp } from "./app";
 
 const port = Number(Bun.env.PORT ?? 8787);
-if (!Bun.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
+if (!Bun.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required for local development");
+}
 
 const app = createApp({
   corsOrigin: Bun.env.CORS_ORIGIN ?? "http://localhost:3000",

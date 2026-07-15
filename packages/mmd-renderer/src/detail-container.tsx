@@ -74,7 +74,12 @@ export function DetailContainer({
       title={translateMetadataLabel(t, "models", container.name, container.label)}
       className="mmd-detail-container"
     >
-      <Space orientation="vertical" size="middle" style={{ display: "flex" }}>
+      <Space
+        className="mmd-detail-content"
+        orientation="vertical"
+        size="middle"
+        style={{ display: "flex" }}
+      >
         {(container.actions ?? []).length > 0 ? (
           <ActionButtons
             actions={container.actions ?? []}
@@ -91,6 +96,7 @@ export function DetailContainer({
           />
         ) : null}
         <Descriptions
+          className="mmd-descriptions"
           bordered
           size="small"
           items={fields.map((field) => ({

@@ -23,6 +23,7 @@ import {
 import { createDefaultFieldRegistry } from "./default-fields";
 import { FieldRegistry } from "./field-registry";
 import { detectMmdLocale, translate, type MmdLocale } from "./i18n";
+import { MmdResponsiveStyles } from "./responsive-styles";
 import {
   createFetchMmdRequest,
   localizeMmdRequestError,
@@ -293,6 +294,7 @@ function MmdProviderRuntime({
 export function MmdProvider(props: MmdProviderProps) {
   return (
     <App>
+      <MmdResponsiveStyles />
       <MmdProviderRuntime {...props} />
     </App>
   );

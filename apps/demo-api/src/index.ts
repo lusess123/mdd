@@ -9,7 +9,7 @@ const app = createApp();
 const DEMO_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
 type CleanupExpiredSessions = (
-  databaseUrl: string,
+  connectionString: string,
   cutoff: Date
 ) => Promise<DemoCleanupResult>;
 
@@ -18,7 +18,9 @@ interface ScheduledController {
 }
 
 interface WorkerBindings {
-  DATABASE_URL?: string;
+  HYPERDRIVE?: {
+    connectionString: string;
+  };
 }
 
 export function createWorker(
@@ -31,11 +33,14 @@ export function createWorker(
       controller: ScheduledController,
       environment: WorkerBindings
     ): Promise<void> {
-      if (!environment.DATABASE_URL) {
-        throw new Error("DATABASE_URL is required for demo session cleanup");
+      const connectionString = environment.HYPERDRIVE?.connectionString;
+      if (!connectionString) {
+        throw new Error(
+          "HYPERDRIVE binding is required for demo session cleanup"
+        );
       }
       const cutoff = new Date(controller.scheduledTime - DEMO_SESSION_TTL_MS);
-      const result = await cleanup(environment.DATABASE_URL, cutoff);
+      const result = await cleanup(connectionString, cutoff);
       console.info("MMD demo session cleanup completed", result);
     }
   };

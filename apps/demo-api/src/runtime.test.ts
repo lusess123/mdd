@@ -1,7 +1,7 @@
 import { describe, expect, it, spyOn } from "bun:test";
 
 import type { ProductPrismaClient } from "./prisma-adapter";
-import { NeonRuntimeFactory } from "./runtime";
+import { DatabaseRuntimeFactory } from "./runtime";
 
 type Query = Record<string, unknown>;
 
@@ -15,12 +15,12 @@ function filteredSession(query: Query): string | undefined {
     : undefined;
 }
 
-describe("NeonRuntimeFactory", () => {
+describe("DatabaseRuntimeFactory", () => {
   it("creates and disconnects one Prisma client per runtime", async () => {
     let clientCreations = 0;
     let disconnects = 0;
 
-    const factory = new NeonRuntimeFactory(async () => {
+    const factory = new DatabaseRuntimeFactory(async () => {
       clientCreations += 1;
       const clientId = clientCreations;
       const sessionMarkers = new Set<string>();
@@ -99,7 +99,7 @@ describe("NeonRuntimeFactory", () => {
 
   it("disconnects the Prisma client when runtime initialization fails", async () => {
     let disconnects = 0;
-    const factory = new NeonRuntimeFactory(async () => ({
+    const factory = new DatabaseRuntimeFactory(async () => ({
       demoSession: {
         async count() {
           throw new Error("seed failed");
@@ -186,7 +186,7 @@ describe("NeonRuntimeFactory", () => {
     } satisfies ProductPrismaClient & {
       $queryRawUnsafe(query: string, ...values: unknown[]): Promise<unknown>;
     };
-    const factory = new NeonRuntimeFactory(async () => client);
+    const factory = new DatabaseRuntimeFactory(async () => client);
     const cutoff = new Date("2026-07-08T03:00:00.000Z");
 
     const result = await factory.cleanupExpiredSessions(

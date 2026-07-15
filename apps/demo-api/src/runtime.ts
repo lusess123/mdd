@@ -12,7 +12,7 @@ export interface ProductRuntime {
 }
 
 type ProductPrismaClientFactory = (
-  databaseUrl: string
+  connectionString: string
 ) => Promise<ProductPrismaClient>;
 
 type CleanupQueryClient = {
@@ -26,19 +26,23 @@ export interface DemoCleanupResult {
 
 const CLEANUP_BATCH_SIZE = 1_000;
 const CLEANUP_MAX_BATCHES = 20;
+const DATABASE_POOL_MAX = 5;
 const CLEANUP_QUERY = `
   SELECT "sessions_deleted", "products_deleted"
   FROM "mmd_cleanup_expired_demo_sessions"($1::timestamp, $2::integer)
 `;
 
 async function createProductPrismaClient(
-  databaseUrl: string
+  connectionString: string
 ): Promise<ProductPrismaClient> {
-  const [{ PrismaNeonHttp }, { PrismaClient }] = await Promise.all([
-    import("@prisma/adapter-neon"),
+  const [{ PrismaPg }, { PrismaClient }] = await Promise.all([
+    import("@prisma/adapter-pg"),
     import("./generated/prisma/client")
   ]);
-  const adapter = new PrismaNeonHttp(databaseUrl, {});
+  const adapter = new PrismaPg({
+    connectionString,
+    max: DATABASE_POOL_MAX
+  });
   return new PrismaClient({ adapter }) as unknown as ProductPrismaClient;
 }
 
@@ -67,14 +71,17 @@ async function disconnectClient(
   }
 }
 
-export class NeonRuntimeFactory {
+export class DatabaseRuntimeFactory {
   constructor(
     readonly createClient: ProductPrismaClientFactory =
       createProductPrismaClient
   ) {}
 
-  async create(databaseUrl: string, sessionId: string): Promise<ProductRuntime> {
-    const client = await this.createClient(databaseUrl);
+  async create(
+    connectionString: string,
+    sessionId: string
+  ): Promise<ProductRuntime> {
+    const client = await this.createClient(connectionString);
     const productAdapter = new PrismaProductAdapter(client, sessionId);
     try {
       await productAdapter.seed();
@@ -90,11 +97,11 @@ export class NeonRuntimeFactory {
   }
 
   async cleanupExpiredSessions(
-    databaseUrl: string,
+    connectionString: string,
     cutoff: Date
   ): Promise<DemoCleanupResult> {
     const client = (await this.createClient(
-      databaseUrl
+      connectionString
     )) as ProductPrismaClient & CleanupQueryClient;
     try {
       const total: DemoCleanupResult = {
@@ -120,18 +127,21 @@ export class NeonRuntimeFactory {
   }
 }
 
-const neonRuntimeFactory = new NeonRuntimeFactory();
+const databaseRuntimeFactory = new DatabaseRuntimeFactory();
 
-export async function createNeonRuntime(
-  databaseUrl: string,
+export async function createDatabaseRuntime(
+  connectionString: string,
   sessionId: string
 ): Promise<ProductRuntime> {
-  return neonRuntimeFactory.create(databaseUrl, sessionId);
+  return databaseRuntimeFactory.create(connectionString, sessionId);
 }
 
 export function cleanupExpiredDemoSessions(
-  databaseUrl: string,
+  connectionString: string,
   cutoff: Date
 ): Promise<DemoCleanupResult> {
-  return neonRuntimeFactory.cleanupExpiredSessions(databaseUrl, cutoff);
+  return databaseRuntimeFactory.cleanupExpiredSessions(
+    connectionString,
+    cutoff
+  );
 }

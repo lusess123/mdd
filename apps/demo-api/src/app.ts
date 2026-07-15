@@ -21,7 +21,7 @@ import {
 import { registerOpenApi } from "./openapi";
 import { productFields } from "./product-engine";
 import {
-  createNeonRuntime,
+  createDatabaseRuntime,
   type ProductRuntime
 } from "./runtime";
 import {
@@ -42,8 +42,10 @@ type Bindings = {
     limit(input: { key: string }): Promise<{ success: boolean }>;
   };
   CORS_ORIGIN?: string;
-  DATABASE_URL?: string;
   EXPOSE_ERROR_STACKS?: string;
+  HYPERDRIVE?: {
+    connectionString: string;
+  };
 };
 
 type AppEnvironment = {
@@ -53,6 +55,7 @@ type AppEnvironment = {
 
 export interface CreateAppOptions {
   corsOrigin?: string | string[];
+  createRuntime?: typeof createDatabaseRuntime;
   databaseUrl?: string;
   runtime?: ProductRuntime;
 }
@@ -202,15 +205,19 @@ export function createApp(options: CreateAppOptions = {}) {
     context: AppContext,
     run: (runtime: ProductRuntime) => Promise<T>
   ): Promise<T> {
-    const databaseUrl = options.databaseUrl ?? context.env?.DATABASE_URL;
-    const runtime = databaseUrl
-      ? await createNeonRuntime(databaseUrl, await sessionId(context))
+    const connectionString =
+      options.databaseUrl ?? context.env?.HYPERDRIVE?.connectionString;
+    const runtime = connectionString
+      ? await (options.createRuntime ?? createDatabaseRuntime)(
+          connectionString,
+          await sessionId(context)
+        )
       : sharedRuntime;
-    if (!runtime) throw new Error("DATABASE_URL is required");
+    if (!runtime) throw new Error("Database connection is required");
     try {
       return await run(runtime);
     } finally {
-      if (databaseUrl) await runtime.dispose();
+      if (connectionString) await runtime.dispose();
     }
   }
 
