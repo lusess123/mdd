@@ -3,6 +3,8 @@
   "name": "mmd-demo-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "f04aaf2faa3d0eef049f6fdbc0af0c37",
   "routes": [
     {
       "pattern": "mmd-api.zyking.xyz",

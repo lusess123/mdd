@@ -12,12 +12,13 @@ bun run dev
 # Website: http://localhost:3000
 # API:     http://localhost:8787`;
 
-const providerCode = `import { MmdProvider } from "@/components/mmd-provider";
+const providerCode = `import { MmdProvider, MmdRenderer } from "mmd-renderer";
 
 <MmdProvider
   api={{
-    baseUrl: "https://api.example.com",
+    baseUrl: "https://mmd-api.zyking.xyz/api",
     timeoutMs: 8_000,
+    credentials: "include",
   }}
   auth={{ mode: "custom", getToken }}
   router={{ mode: "custom", navigate }}
@@ -27,27 +28,50 @@ const providerCode = `import { MmdProvider } from "@/components/mmd-provider";
   }}
   onError={reportError}
 >
-  <App />
+  <MmdRenderer model="Product" view="listview" />
 </MmdProvider>`;
 
-const fieldCode = `registerFieldType({
-  type: "money",
-  display: MoneyDisplay,
-  editor: MoneyInput,
-  filter: MoneyRange,
-  validate: (value) => value >= 0,
-  serialize: (value) => Math.round(value * 100),
-});`;
+const fieldCode = `function InventoryMeter({ value, scene, onChange }) {
+  if (scene === "form" || scene === "search") {
+    return (
+      <InputNumber
+        min={0}
+        value={Number(value ?? 0)}
+        onChange={(next) => onChange?.(next ?? 0)}
+      />
+    );
+  }
+  return <Progress percent={Math.min(100, Number(value ?? 0) * 2)} />;
+}
 
-const actionCode = `registerAction({
-  name: "publish",
-  placement: "row",
-  visible: ({ record }) => record.status === "draft",
-  confirm: { title: "Publish this product?" },
-  execute: ({ record, api }) =>
-    api.action("publish", { ids: [record.id] }),
-  success: { refresh: true },
-});`;
+<MmdProvider
+  fields={{
+    "inventory-meter": {
+      list: InventoryMeter,
+      detail: InventoryMeter,
+      form: InventoryMeter,
+      search: InventoryMeter,
+    },
+  }}
+>
+  <MmdRenderer model="Product" view="listview" />
+</MmdProvider>`;
+
+const actionCode = `const duplicate: ActionHandler = async (context, action) => {
+  const id = context.record?.[context.keyField ?? "id"];
+  if (id == null) return;
+
+  const data = await context.client.executeAction({
+    model: context.model,
+    action: action.name ?? "duplicate",
+    ids: [String(id)],
+  });
+  return { data, refresh: true };
+};
+
+<MmdProvider actions={{ duplicate }}>
+  <MmdRenderer model="Product" view="listview" />
+</MmdProvider>`;
 
 const serverCode = `import { createApp } from "./app";
 
@@ -59,7 +83,7 @@ export default app;`;
 
 export function DocsContent() {
   const { config, t } = useMmd();
-  const openApiUrl = `${config.api.baseUrl.replace(/\/?api\/?$/, "")}/openapi.json`;
+  const apiDocsUrl = `${config.api.baseUrl.replace(/\/?api\/?$/, "")}/docs`;
 
   const sections = [
     ["01", "docs.quickStart", quickStartCode, "shell"],
@@ -78,7 +102,7 @@ export function DocsContent() {
         actions={
           <a
             className="button button-primary"
-            href={openApiUrl}
+            href={apiDocsUrl}
             rel="noopener noreferrer"
             target="_blank"
           >

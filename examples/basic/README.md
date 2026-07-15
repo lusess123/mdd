@@ -1,25 +1,40 @@
-# 基础示例 / Basic demo
+# 基础前后端示例 / Basic full-stack example
 
-这是仓库当前可运行的完整链路：共享 `Product` 模型、Hono CRUD API、Next.js Playground 和请求记录面板。
+这个例子使用仓库内的真实实现完成最小闭环：
+
+```text
+MmdRenderer → Hono MMD API → mmd-engine → MmdDataAdapter
+```
 
 ## 运行
-
-在仓库根目录执行：
 
 ```bash
 bun install
 bun run dev
 ```
 
-- 网站与 Playground：<http://localhost:3000/playground>
-- Demo API：<http://localhost:8787>
-- OpenAPI：<http://localhost:8787/openapi.json>
+- Playground：<http://localhost:3000/playground>
+- API 文档：<http://localhost:8787/docs>
 
-## 对应实现
+## 示例代码
 
-- [共享模型与类型](../../packages/mmd-contracts/src/index.ts)
-- [Hono API 路由](../../apps/demo-api/src/app.ts)
-- [内存数据仓库](../../apps/demo-api/src/store.ts)
-- [Next.js Playground](../../apps/website/src/components/playground-content.tsx)
+- [前端.tsx](./前端.tsx)：使用 `MmdProvider` 和 `MmdRenderer` 生成 Product 管理页。
+- [后端.ts](./后端.ts)：用 Bun 启动真实 Hono Demo API。
+- [通用接口请求.ts](./通用接口请求.ts)：不使用 UI，直接调用 MMD HTTP 协议。
 
-当前数据保存在内存中，重启 Demo API 后会恢复为种子数据。
+## 实现位置
+
+- [Product 模型](../../packages/mmd-contracts/src/demo.ts)
+- [服务端引擎注册](../../apps/demo-api/src/product-engine.ts)
+- [Hono 路由](../../apps/demo-api/src/app.ts)
+- [Prisma + Neon Adapter](../../apps/demo-api/src/prisma-adapter.ts)
+- [真实 Playground](../../apps/website/src/components/playground-content.tsx)
+
+未设置 `DATABASE_URL` 时使用内存 Adapter；线上和配置了数据库的本地环境使用 Neon。Neon 模式按 Cookie 或 `X-MMD-Session` 隔离数据。
+
+全部示例可统一做类型检查：
+
+```bash
+bun run build:packages
+bunx tsc -p examples/tsconfig.json --noEmit
+```

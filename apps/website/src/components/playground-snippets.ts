@@ -11,119 +11,96 @@ export const modelCode = `const productModel: ModelDefinition = {
   primaryKey: "id",
   fields: [
     { name: "cover", label: "Cover", type: "image" },
-    { name: "price", label: "Price", type: "money" },
+    { name: "name", label: "Name", type: "text", required: true },
+    { name: "sku", label: "SKU", type: "text", required: true },
+    { name: "price", label: "Price", type: "money", required: true },
     { name: "tags", label: "Tags", type: "tags" },
     { name: "status", label: "Status", type: "status" },
+    {
+      name: "inventory",
+      label: "Inventory",
+      type: "inventory-meter",
+      required: true,
+    },
   ],
   actions: [
-    { name: "publish", label: "Publish", placement: "row" },
-    { name: "archive", label: "Archive", placement: "row" },
+    {
+      name: "publish",
+      label: "Publish",
+      placement: "row",
+      showExpression: 'row.status === "draft"',
+    },
+    {
+      name: "archive",
+      label: "Archive",
+      placement: "row",
+      confirm: "Archive this product?",
+    },
     { name: "duplicate", label: "Duplicate", placement: "row" },
   ],
 };`;
 
-const listCode = `app.get("/api/products", (context) => {
-  const input = ListQuerySchema.safeParse(context.req.query());
-  return input.success
-    ? context.json(products.list(input.data))
-    : context.json({
-        error: { code: "VALIDATION_ERROR", message: "Invalid request" },
-      }, 400);
+const metaCode = `app.post("/api/mmd/meta", async (context) => {
+  const input = MetaRequestSchema.parse(await context.req.json());
+  return withRuntime(context, async ({ engine }) =>
+    context.json(engine.getMeta(input)),
+  );
 });`;
 
-const createCode = `app.post("/api/products", async (context) => {
-  const json = await context.req.json().catch(() => undefined);
-  const input = CreateProductSchema.safeParse(json);
-  if (!input.success) {
-    return context.json({
-      error: { code: "VALIDATION_ERROR", message: "Invalid request" },
-    }, 400);
-  }
-
-  const product = products.create(input.data);
-  return product
-    ? context.json({ data: product }, 201)
-    : context.json({
-        error: { code: "SKU_CONFLICT", message: "SKU already exists" },
-      }, 409);
+const listCode = `app.post("/api/mmd/query-list", async (context) => {
+  const input = QueryListRequestSchema.parse(await context.req.json());
+  return withRuntime(context, async ({ engine }) =>
+    context.json(await engine.queryList(input)),
+  );
 });`;
 
-const updateCode = `app.patch("/api/products/:id", async (context) => {
-  const json = await context.req.json().catch(() => undefined);
-  const input = UpdateProductSchema.safeParse(json);
-  if (!input.success) {
-    return context.json({
-      error: { code: "VALIDATION_ERROR", message: "Invalid request" },
-    }, 400);
-  }
-
-  const id = context.req.param("id");
-  if (!products.get(id)) {
-    return context.json({
-      error: { code: "PRODUCT_NOT_FOUND", message: "Product not found" },
-    }, 404);
-  }
-
-  if (input.data.sku && products.hasSku(input.data.sku, id)) {
-    return context.json({
-      error: { code: "SKU_CONFLICT", message: "SKU already exists" },
-    }, 409);
-  }
-
-  const product = products.update(id, input.data);
-  return product
-    ? context.json({ data: product })
-    : context.json({
-        error: { code: "PRODUCT_NOT_FOUND", message: "Product not found" },
-      }, 404);
+const getCode = `app.post("/api/mmd/query-one", async (context) => {
+  const input = QueryOneRequestSchema.parse(await context.req.json());
+  const data = await withRuntime(context, ({ engine }) =>
+    engine.queryOne(input),
+  );
+  return data
+    ? context.json({ data })
+    : context.json({ error: { code: "RECORD_NOT_FOUND" } }, 404);
 });`;
 
-const deleteCode = `app.delete("/api/products/:id", (context) =>
-  products.delete(context.req.param("id"))
-    ? context.json({ success: true })
-    : context.json({
-        error: { code: "PRODUCT_NOT_FOUND", message: "Product not found" },
-      }, 404),
-);`;
+const saveCode = `app.post("/api/mmd/save", async (context) => {
+  const input = SaveRequestSchema.parse(await context.req.json());
+  return withRuntime(context, async ({ engine }) =>
+    context.json({ data: await engine.save(input) }, input.id ? 200 : 201),
+  );
+});`;
 
-const actionCode = `const actionHandlers = {
-  publish: (ids) => products.setStatus("publish", ids, "published"),
-  archive: (ids) => products.setStatus("archive", ids, "archived"),
-  duplicate: (ids) => products.duplicate(ids),
+const removeCode = `app.post("/api/mmd/remove", async (context) => {
+  const input = RemoveRequestSchema.parse(await context.req.json());
+  const ids = input.ids ?? [input.id];
+  const data = await withRuntime(context, ({ engine }) =>
+    Promise.all(ids.map((id) => engine.remove({ model: input.model, id }))),
+  );
+  return context.json({ success: true, affected: data.filter(Boolean).length });
+});`;
+
+const actionCode = `const actions = {
+  publish: changeStatus("published"),
+  archive: changeStatus("archived"),
+  duplicate: duplicateProduct,
 };
 
-app.post("/api/actions/:action", async (context) => {
-  const action = context.req.param("action");
-  const handler = Object.hasOwn(actionHandlers, action)
-    ? actionHandlers[action]
-    : undefined;
-  if (!handler) {
-    return context.json({
-      error: { code: "ACTION_NOT_FOUND", message: "Action not found" },
-    }, 404);
-  }
-
-  const json = await context.req.json().catch(() => undefined);
-  const input = ActionRequestSchema.safeParse(json);
-  if (!input.success) {
-    return context.json({
-      error: { code: "VALIDATION_ERROR", message: "Invalid request" },
-    }, 400);
-  }
-
-  const result = handler(input.data.ids);
-  return result
-    ? context.json(result)
-    : context.json({
-        error: { code: "PRODUCT_NOT_FOUND", message: "Product not found" },
-      }, 404);
+app.post("/api/mmd/actions/:action", async (context) => {
+  const input = ExecuteActionRequestSchema.parse({
+    ...await context.req.json(),
+    action: context.req.param("action"),
+  });
+  return withRuntime(context, async ({ engine }) =>
+    context.json(await engine.executeAction(input)),
+  );
 });`;
 
 export function frontendCodeFor(request?: CodeRequest) {
   if (!request) {
-    return `const { request } = useMmd();
+    return `const { client } = useMmd();
 
-await request("/products", { method: "GET" });`;
+await client.list({ model: "Product", page: 1, pageSize: 20 });`;
   }
 
   const body =
@@ -139,12 +116,12 @@ await request("${request.path}", {
 }
 
 export function serverCodeFor(request?: CodeRequest) {
-  const method = request?.method ?? "GET";
-  const path = request?.path.split("?")[0] ?? "/products";
+  const path = request?.path.split("?")[0] ?? "/mmd/query-list";
 
-  if (path.startsWith("/actions/")) return actionCode;
-  if (method === "POST") return createCode;
-  if (method === "PATCH") return updateCode;
-  if (method === "DELETE") return deleteCode;
+  if (path.includes("/actions/")) return actionCode;
+  if (path.endsWith("/meta")) return metaCode;
+  if (path.endsWith("/query-one")) return getCode;
+  if (path.endsWith("/save")) return saveCode;
+  if (path.endsWith("/remove")) return removeCode;
   return listCode;
 }

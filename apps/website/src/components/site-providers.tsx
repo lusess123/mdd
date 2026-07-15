@@ -16,39 +16,46 @@ export function SiteProviders({ children }: PropsWithChildren) {
   return (
     <ConfigProvider
       theme={{
-        algorithm: theme.darkAlgorithm,
+        algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: "#2dd4bf",
-          colorInfo: "#60a5fa",
-          colorSuccess: "#34d399",
-          colorWarning: "#fbbf24",
-          colorError: "#fb7185",
-          colorBgBase: "#090d12",
-          colorBgContainer: "#10161f",
-          colorBorder: "#273241",
-          borderRadius: 5,
+          colorPrimary: "#ff7664",
+          colorInfo: "#65b9f1",
+          colorSuccess: "#4dbb73",
+          colorWarning: "#d89b18",
+          colorError: "#d94c45",
+          colorText: "#25231f",
+          colorTextSecondary: "#5f584d",
+          colorBgBase: "#fff8e7",
+          colorBgContainer: "#fffdf7",
+          colorBorder: "#25231f",
+          borderRadius: 8,
           fontFamily:
             "var(--font-sans), ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif",
-          fontSize: 13,
-          controlHeight: 32,
+          fontSize: 14,
+          controlHeight: 36,
         },
         components: {
           Button: { fontWeight: 600 },
           Table: {
-            headerBg: "#111923",
-            headerColor: "#9cabbc",
-            borderColor: "#253141",
-            rowHoverBg: "#121c27",
-            cellPaddingBlockSM: 7,
-            cellPaddingInlineSM: 9,
+            headerBg: "#ccecff",
+            headerColor: "#25231f",
+            borderColor: "#25231f",
+            rowHoverBg: "#ffedaa",
+            cellPaddingBlockSM: 8,
+            cellPaddingInlineSM: 10,
           },
-          Modal: { contentBg: "#10161f", headerBg: "#10161f" },
-          Input: { activeBorderColor: "#2dd4bf", hoverBorderColor: "#3d566c" },
+          Modal: { contentBg: "#fffdf7", headerBg: "#fffdf7" },
+          Input: { activeBorderColor: "#ff7664", hoverBorderColor: "#25231f" },
         },
       }}
     >
       <App>
-        <MmdProvider environment={environment}>{children}</MmdProvider>
+        <MmdProvider
+          environment={environment}
+          api={{ credentials: "include" }}
+        >
+          {children}
+        </MmdProvider>
       </App>
     </ConfigProvider>
   );

@@ -44,10 +44,198 @@ describe("MMD demo API", () => {
     expect(response.status).toBe(200);
     expect(body).toMatchObject({ total: 3, page: 1, pageSize: 20 });
     expect(body.data.map((product) => product.id)).toEqual([
-      "product-1001",
+      "product-1003",
       "product-1002",
-      "product-1003"
+      "product-1001"
     ]);
+  });
+
+  it("serves model and generated view metadata through the generic MMD API", async () => {
+    const response = await app.request("/api/mmd/meta", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        models: ["Product"],
+        views: ["Product.listview", "Product.editview"]
+      })
+    });
+    const body = (await response.json()) as {
+      models: Record<string, { name: string }>;
+      views: Record<string, { type: string }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.models.Product?.name).toBe("Product");
+    expect(body.views["Product.listview"]?.type).toBe("list");
+    expect(body.views["Product.editview"]?.type).toBe("edit");
+  });
+
+  it("runs safe list queries through the generic MMD API", async () => {
+    const response = await app.request("/api/mmd/query-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        search: { status: "draft" },
+        sort: [{ field: "name", direction: "asc" }]
+      })
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      total: 1,
+      data: [{ id: "product-1001", status: "draft" }]
+    });
+  });
+
+  it("rejects unknown generic query fields before they reach the adapter", async () => {
+    const response = await app.request("/api/mmd/query-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "Product", search: { password: "secret" } })
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { code: "FIELD_NOT_FOUND" }
+    });
+  });
+
+  it("saves and executes declared actions through the generic MMD API", async () => {
+    const saveResponse = await app.request("/api/mmd/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        data: {
+          name: "Comic Pen",
+          sku: "PEN-009",
+          cover: "https://example.com/pen.jpg",
+          price: 12,
+          tags: ["drawing"],
+          inventory: 20
+        }
+      })
+    });
+    const saved = (await saveResponse.json()) as { data: { id: string } };
+    expect(saveResponse.status).toBe(201);
+
+    const actionResponse = await app.request("/api/mmd/actions/publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "Product", ids: [saved.data.id] })
+    });
+    expect(actionResponse.status).toBe(200);
+    expect(await actionResponse.json()).toMatchObject({
+      action: "publish",
+      affected: 1,
+      data: [{ id: saved.data.id, status: "published" }]
+    });
+  });
+
+  it("creates a product with only its required fields through the generic MMD API", async () => {
+    const response = await app.request("/api/mmd/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        data: {
+          name: "Coverless Pencil",
+          sku: "PENCIL-010",
+          price: 3,
+          inventory: 10
+        }
+      })
+    });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({
+      data: {
+        name: "Coverless Pencil",
+        cover: "",
+        tags: [],
+        status: "draft"
+      }
+    });
+  });
+
+  it("validates Product values submitted through the generic MMD API", async () => {
+    const response = await app.request("/api/mmd/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        data: {
+          name: "Invalid Pencil",
+          sku: "PENCIL-011",
+          price: -1,
+          tags: [],
+          inventory: 10
+        }
+      })
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { code: "VALIDATION_ERROR", message: "Invalid request" }
+    });
+  });
+
+  it("rejects duplicate Product SKUs through the generic MMD API", async () => {
+    const response = await app.request("/api/mmd/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        data: {
+          name: "Duplicate Lamp",
+          sku: "LAMP-001",
+          price: 10,
+          tags: [],
+          inventory: 1
+        }
+      })
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: { code: "SKU_CONFLICT", message: "SKU already exists" }
+    });
+  });
+
+  it("returns a stable error when a generic Product update target is missing", async () => {
+    const response = await app.request("/api/mmd/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        id: "missing-product",
+        data: { name: "Missing" }
+      })
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: { code: "RECORD_NOT_FOUND", message: "Record not found" }
+    });
+  });
+
+  it("does not partially mutate products when a bulk action includes a missing id", async () => {
+    const actionResponse = await app.request("/api/mmd/actions/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "Product",
+        ids: ["product-1001", "missing-product"]
+      })
+    });
+
+    expect(actionResponse.status).toBe(404);
+
+    const productResponse = await app.request("/api/products/product-1001");
+    expect(await productResponse.json()).toMatchObject({
+      data: { status: "draft" }
+    });
   });
 
   it("filters and paginates the product list", async () => {
@@ -145,7 +333,9 @@ describe("MMD demo API", () => {
         id: "product-1001",
         name: "Aurora Lamp Pro",
         inventory: 30,
-        sku: "LAMP-001"
+        sku: "LAMP-001",
+        cover:
+          "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=128&h=128&q=80"
       }
     });
   });
@@ -288,6 +478,12 @@ describe("MMD demo API", () => {
       [
         "/api/actions/{action}",
         "/api/meta",
+        "/api/mmd/actions/{action}",
+        "/api/mmd/meta",
+        "/api/mmd/query-list",
+        "/api/mmd/query-one",
+        "/api/mmd/remove",
+        "/api/mmd/save",
         "/api/products",
         "/api/products/{id}",
         "/health"

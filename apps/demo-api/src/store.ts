@@ -70,6 +70,8 @@ export class InMemoryProductStore {
     const product: Product = {
       id: `product-${crypto.randomUUID()}`,
       ...input,
+      cover: input.cover ?? "",
+      tags: input.tags ?? [],
       status: input.status ?? "draft",
       createdAt: timestamp,
       updatedAt: timestamp
@@ -91,6 +93,8 @@ export class InMemoryProductStore {
     const product: Product = {
       ...this.products[index],
       ...input,
+      cover: input.cover ?? this.products[index].cover,
+      tags: input.tags ?? this.products[index].tags,
       updatedAt: new Date().toISOString()
     };
     this.products[index] = product;

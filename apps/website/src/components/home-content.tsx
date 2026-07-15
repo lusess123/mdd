@@ -14,16 +14,23 @@ const modelCode = `const productModel: ModelDefinition = {
     { name: "name", label: "Name", type: "text" },
     { name: "price", label: "Price", type: "money" },
     { name: "status", label: "Status", type: "status" },
+    { name: "inventory", label: "Inventory", type: "inventory-meter" },
   ],
   actions: [
-    { name: "publish", label: "Publish", placement: "row" },
+    {
+      name: "publish",
+      label: "Publish",
+      placement: "row",
+      showExpression: 'row.status === "draft"',
+    },
+    { name: "duplicate", label: "Duplicate", placement: "row" },
   ],
 };`;
 
 const products = [
-  { name: "Orbit Keyboard", price: "¥899.00", status: "published" },
-  { name: "Signal Dock", price: "¥429.00", status: "draft" },
-  { name: "Mono Light", price: "¥1,199.00", status: "archived" },
+  { name: "Orbit Keyboard", price: "$899.00", status: "published" },
+  { name: "Signal Dock", price: "$429.00", status: "draft" },
+  { name: "Mono Light", price: "$1,199.00", status: "archived" },
 ];
 
 export function HomeContent() {
@@ -111,8 +118,8 @@ export function HomeContent() {
           <CodeBlock code={modelCode} label="product.model.ts" compact />
           <div className="pipeline-steps">
             <article><span>01</span><div><code>mmd-contracts · {t("home.current")}</code><p>{t("home.contracts")}</p></div></article>
-            <article><span>02</span><div><code>mmd-engine · {t("home.planned")}</code><p>{t("home.engine")}</p></div></article>
-            <article><span>03</span><div><code>mmd-renderer · {t("home.planned")}</code><p>{t("home.renderer")}</p></div></article>
+            <article><span>02</span><div><code>mmd-engine · {t("home.current")}</code><p>{t("home.engine")}</p></div></article>
+            <article><span>03</span><div><code>mmd-renderer · {t("home.current")}</code><p>{t("home.renderer")}</p></div></article>
           </div>
         </div>
       </section>

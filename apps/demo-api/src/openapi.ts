@@ -6,10 +6,16 @@ import {
   ActionResponseSchema,
   CreateProductSchema,
   ErrorResponseSchema,
+  ExecuteActionRequestSchema,
   ListQuerySchema,
+  MetaRequestSchema,
   MetaResponseSchema,
   ProductListResponseSchema,
   ProductResponseSchema,
+  QueryListRequestSchema,
+  QueryOneRequestSchema,
+  RemoveRequestSchema,
+  SaveRequestSchema,
   UpdateProductSchema
 } from "./schemas";
 
@@ -31,6 +37,25 @@ const json = <Schema extends z.ZodType>(schema: Schema) => ({
   content: { "application/json": { schema } }
 });
 
+const genericRecord = z.record(z.string(), z.unknown());
+const genericRecordResponse = z.object({ data: genericRecord });
+const genericListResponse = z.object({
+  data: z.array(genericRecord),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive()
+});
+const genericMetaResponse = z.object({
+  models: z.record(z.string(), z.unknown()),
+  views: z.record(z.string(), z.unknown()),
+  dicts: z.record(z.string(), z.unknown())
+});
+
+const body = <Schema extends z.ZodType>(schema: Schema) => ({
+  required: true,
+  content: { "application/json": { schema } }
+});
+
 const healthRoute = createRoute({
   method: "get",
   path: "/health",
@@ -49,6 +74,99 @@ const metaRoute = createRoute({
   tags: ["Metadata"],
   responses: {
     200: { ...json(MetaResponseSchema), description: "MMD model metadata" }
+  }
+});
+
+const mmdMetaRoute = createRoute({
+  method: "post",
+  path: "/api/mmd/meta",
+  tags: ["MMD"],
+  request: { body: body(MetaRequestSchema) },
+  responses: {
+    200: { ...json(genericMetaResponse), description: "Models, views and dictionaries" },
+    400: { ...json(ErrorResponseSchema), description: "Invalid metadata request" }
+  }
+});
+
+const mmdQueryListRoute = createRoute({
+  method: "post",
+  path: "/api/mmd/query-list",
+  tags: ["MMD"],
+  request: { body: body(QueryListRequestSchema) },
+  responses: {
+    200: { ...json(genericListResponse), description: "Metadata-driven list query" },
+    400: { ...json(ErrorResponseSchema), description: "Invalid or unsafe query" },
+    404: { ...json(ErrorResponseSchema), description: "Model not found" }
+  }
+});
+
+const mmdQueryOneRoute = createRoute({
+  method: "post",
+  path: "/api/mmd/query-one",
+  tags: ["MMD"],
+  request: { body: body(QueryOneRequestSchema) },
+  responses: {
+    200: { ...json(genericRecordResponse), description: "One record" },
+    400: { ...json(ErrorResponseSchema), description: "Invalid query" },
+    404: { ...json(ErrorResponseSchema), description: "Record not found" }
+  }
+});
+
+const mmdSaveRoute = createRoute({
+  method: "post",
+  path: "/api/mmd/save",
+  tags: ["MMD"],
+  request: { body: body(SaveRequestSchema) },
+  responses: {
+    200: { ...json(genericRecordResponse), description: "Record updated" },
+    201: { ...json(genericRecordResponse), description: "Record created" },
+    400: { ...json(ErrorResponseSchema), description: "Invalid record" },
+    409: { ...json(ErrorResponseSchema), description: "Unique value conflict" }
+  }
+});
+
+const mmdRemoveRoute = createRoute({
+  method: "post",
+  path: "/api/mmd/remove",
+  tags: ["MMD"],
+  request: { body: body(RemoveRequestSchema) },
+  responses: {
+    200: {
+      ...json(
+        z.object({
+          success: z.literal(true),
+          affected: z.number().int().positive(),
+          data: z.array(genericRecord)
+        })
+      ),
+      description: "Record removed"
+    },
+    400: { ...json(ErrorResponseSchema), description: "Invalid remove request" },
+    404: { ...json(ErrorResponseSchema), description: "Record not found" }
+  }
+});
+
+const mmdActionRoute = createRoute({
+  method: "post",
+  path: "/api/mmd/actions/{action}",
+  tags: ["MMD"],
+  request: {
+    params: actionParams,
+    body: body(ExecuteActionRequestSchema.omit({ action: true }))
+  },
+  responses: {
+    200: {
+      ...json(
+        z.object({
+          action: z.string(),
+          affected: z.number().int().nonnegative(),
+          data: z.array(genericRecord)
+        })
+      ),
+      description: "Custom action result"
+    },
+    400: { ...json(ErrorResponseSchema), description: "Invalid action request" },
+    404: { ...json(ErrorResponseSchema), description: "Action or record not found" }
   }
 });
 
@@ -145,6 +263,12 @@ const executeActionRoute = createRoute({
 const routes = [
   healthRoute,
   metaRoute,
+  mmdMetaRoute,
+  mmdQueryListRoute,
+  mmdQueryOneRoute,
+  mmdSaveRoute,
+  mmdRemoveRoute,
+  mmdActionRoute,
   listProductsRoute,
   getProductRoute,
   createProductRoute,

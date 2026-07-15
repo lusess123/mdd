@@ -8,13 +8,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --parallel --filter 'mmd-demo-*' dev",
-    "test": "bun run --workspaces --if-present test",
-    "typecheck": "bun run --workspaces --if-present typecheck",
-    "build": "bun run --workspaces --if-present build"
+    "build:packages": "bun run --filter mmd-contracts build && bun run --filter mmd-engine build && bun run --filter mmd-renderer build",
+    "dev": "bun run build:packages && bun run --parallel --filter 'mmd-demo-*' dev",
+    "test": "bun run build:packages && bun run --workspaces --if-present test",
+    "typecheck": "bun run build:packages && bun run --workspaces --if-present typecheck",
+    "build": "bun run build:packages && bun run --filter 'mmd-demo-*' build"
   },
   "devDependencies": {
     "@types/bun": "^1.3.4",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   }
 }

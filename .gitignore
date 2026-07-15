@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 .vite/
 
 .DS_Store
+
+# Local credentials and private work-item configuration
+.ai-doc/config/
+apps/demo-api/src/generated/
