@@ -3,6 +3,7 @@ import { apiReference } from "@scalar/hono-api-reference";
 import type { Context } from "hono";
 import { cors } from "hono/cors";
 import { getCookie, setCookie } from "hono/cookie";
+import { requestId, type RequestIdVariables } from "hono/request-id";
 import {
   productModel,
   type MetaRequest,
@@ -20,7 +21,6 @@ import {
 import { registerOpenApi } from "./openapi";
 import { productFields } from "./product-engine";
 import {
-  createMemoryRuntime,
   createNeonRuntime,
   type ProductRuntime
 } from "./runtime";
@@ -43,10 +43,12 @@ type Bindings = {
   };
   CORS_ORIGIN?: string;
   DATABASE_URL?: string;
+  EXPOSE_ERROR_STACKS?: string;
 };
 
 type AppEnvironment = {
   Bindings: Bindings;
+  Variables: RequestIdVariables;
 };
 
 export interface CreateAppOptions {
@@ -156,9 +158,45 @@ function isRecordLimitConstraint(error: unknown): boolean {
   return error instanceof Error && error.message.includes("MMD_SESSION_RECORD_LIMIT");
 }
 
+function describeError(error: Error) {
+  return {
+    name: error.name,
+    message: error.message,
+    stack: error.stack ?? `${error.name}: ${error.message}`
+  };
+}
+
+function internalError(context: AppContext, error: Error) {
+  const requestId = context.get("requestId");
+  const described = describeError(error);
+  console.error({
+    event: "mmd_api_unhandled_error",
+    requestId,
+    cfRay: context.req.header("cf-ray"),
+    method: context.req.method,
+    path: context.req.path,
+    error: described
+  });
+  return context.json(
+    {
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Internal server error",
+        details: {
+          requestId,
+          ...(context.env?.EXPOSE_ERROR_STACKS === "true"
+            ? { stack: described.stack }
+            : {})
+        }
+      }
+    },
+    500
+  );
+}
+
 export function createApp(options: CreateAppOptions = {}) {
   const app = new OpenAPIHono<AppEnvironment>();
-  const sharedRuntime = options.runtime ?? createMemoryRuntime();
+  const sharedRuntime = options.runtime;
 
   async function withRuntime<T>(
     context: AppContext,
@@ -168,10 +206,11 @@ export function createApp(options: CreateAppOptions = {}) {
     const runtime = databaseUrl
       ? await createNeonRuntime(databaseUrl, await sessionId(context))
       : sharedRuntime;
+    if (!runtime) throw new Error("DATABASE_URL is required");
     try {
       return await run(runtime);
     } finally {
-      if (runtime !== sharedRuntime) await runtime.dispose();
+      if (databaseUrl) await runtime.dispose();
     }
   }
 
@@ -202,15 +241,22 @@ export function createApp(options: CreateAppOptions = {}) {
     return total + additions <= MAX_SESSION_RECORDS;
   }
 
+  app.use("*", requestId({ limitLength: 64 }));
+
   app.use("*", async (context, next) => {
     const origin = normalizeOrigins(
       options.corsOrigin ?? context.env?.CORS_ORIGIN ?? "*"
     );
     return cors({
       origin,
-      allowHeaders: ["Content-Type", "Authorization", "X-MMD-Session"],
+      allowHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-MMD-Session",
+        "X-Request-Id"
+      ],
       allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-      exposeHeaders: ["X-MMD-Session"],
+      exposeHeaders: ["X-MMD-Session", "X-Request-Id"],
       maxAge: 86400,
       credentials: origin !== "*"
     })(context, next);
@@ -579,8 +625,7 @@ export function createApp(options: CreateAppOptions = {}) {
           : 400;
       return jsonError(context, status, error.code, error.message, error.details);
     }
-    console.error(error);
-    return jsonError(context, 500, "INTERNAL_ERROR", "Internal server error");
+    return internalError(context, error);
   });
 
   registerOpenApi(app);

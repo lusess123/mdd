@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it, spyOn } from "bun:test";
 
 import { createApp, edgeSessionId } from "./app";
 import { MemoryProductAdapter } from "./memory-adapter";
 import { createProductEngine } from "./product-engine";
-import { createMemoryRuntime } from "./runtime";
+import type { ProductRuntime } from "./runtime";
 import { MetaResponseSchema } from "./schemas";
 
 class RecordLimitAdapter extends MemoryProductAdapter {
@@ -12,6 +12,30 @@ class RecordLimitAdapter extends MemoryProductAdapter {
   ): Promise<Record<string, unknown>> {
     throw new Error("database rejected insert: MMD_SESSION_RECORD_LIMIT");
   }
+}
+
+class FailingListAdapter extends MemoryProductAdapter {
+  async findMany(
+    _input: Parameters<MemoryProductAdapter["findMany"]>[0]
+  ): Promise<Record<string, unknown>[]> {
+    throw new Error("database unavailable");
+  }
+}
+
+function createFailingApp() {
+  return createApp({
+    runtime: {
+      engine: createProductEngine(new FailingListAdapter()),
+      dispose: async () => undefined
+    }
+  });
+}
+
+function createMemoryRuntime(): ProductRuntime {
+  return {
+    engine: createProductEngine(new MemoryProductAdapter()),
+    dispose: async () => undefined
+  };
 }
 
 async function createAppAtRecordLimit() {
@@ -34,7 +58,7 @@ describe("MMD demo API", () => {
   let app: ReturnType<typeof createApp>;
 
   beforeEach(() => {
-    app = createApp();
+    app = createApp({ runtime: createMemoryRuntime() });
   });
 
   it("reports that the service is healthy", async () => {
@@ -42,6 +66,155 @@ describe("MMD demo API", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
+  });
+
+  it("returns a validated request id on successful responses", async () => {
+    const response = await app.request("/health", {
+      headers: { "X-Request-Id": "request_test-123" }
+    });
+
+    expect(response.headers.get("X-Request-Id")).toBe("request_test-123");
+  });
+
+  it("requires a database when no test runtime is provided", async () => {
+    const consoleError = spyOn(console, "error").mockImplementation(
+      () => undefined
+    );
+
+    try {
+      const response = await createApp().request(
+        "/api/mmd/query-list",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-Id": "request_database-123"
+          },
+          body: JSON.stringify({ model: "Product" })
+        }
+      );
+
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Internal server error",
+          details: { requestId: "request_database-123" }
+        }
+      });
+      expect(consoleError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "mmd_api_unhandled_error",
+          error: expect.objectContaining({
+            message: "DATABASE_URL is required"
+          })
+        })
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("returns a request id and logs a safe stack for unexpected errors", async () => {
+    const consoleError = spyOn(console, "error").mockImplementation(
+      () => undefined
+    );
+
+    try {
+      const response = await createFailingApp().request(
+        "/api/mmd/query-list?debug=QUERY_SECRET",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer AUTH_SECRET",
+            Cookie: "mmd_session=COOKIE_SECRET",
+            "Content-Type": "application/json",
+            "cf-ray": "ray_test_123",
+            "X-MMD-Session": "SESSION_SECRET",
+            "X-Request-Id": "request_error-123"
+          },
+          body: JSON.stringify({
+            model: "Product",
+            search: { name: "BODY_SECRET" }
+          })
+        }
+      );
+      const body = (await response.json()) as {
+        error: {
+          code: string;
+          message: string;
+          details: { requestId: string; stack?: string };
+        };
+      };
+
+      expect(response.status).toBe(500);
+      expect(response.headers.get("X-Request-Id")).toBe("request_error-123");
+      expect(body).toEqual({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "Internal server error",
+          details: { requestId: "request_error-123" }
+        }
+      });
+      expect(consoleError).toHaveBeenCalledTimes(1);
+
+      const [log] = consoleError.mock.calls[0] ?? [];
+      expect(log).toMatchObject({
+        event: "mmd_api_unhandled_error",
+        requestId: "request_error-123",
+        cfRay: "ray_test_123",
+        method: "POST",
+        path: "/api/mmd/query-list",
+        error: {
+          name: "Error",
+          message: "database unavailable",
+          stack: expect.stringContaining("database unavailable")
+        }
+      });
+
+      const serializedLog = JSON.stringify(log);
+      for (const secret of [
+        "AUTH_SECRET",
+        "COOKIE_SECRET",
+        "SESSION_SECRET",
+        "BODY_SECRET",
+        "QUERY_SECRET"
+      ]) {
+        expect(serializedLog).not.toContain(secret);
+      }
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it("exposes unexpected error stacks only when explicitly enabled", async () => {
+    const consoleError = spyOn(console, "error").mockImplementation(
+      () => undefined
+    );
+
+    try {
+      const response = await createFailingApp().request(
+        "/api/mmd/query-list",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-Id": "request_stack-123"
+          },
+          body: JSON.stringify({ model: "Product" })
+        },
+        { EXPOSE_ERROR_STACKS: "true" }
+      );
+      const body = (await response.json()) as {
+        error: { details: { requestId: string; stack?: string } };
+      };
+
+      expect(response.status).toBe(500);
+      expect(body.error.details.requestId).toBe("request_stack-123");
+      expect(body.error.details.stack).toContain("database unavailable");
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("describes the Product model and its actions", async () => {
@@ -471,7 +644,10 @@ describe("MMD demo API", () => {
   });
 
   it("uses the configured CORS origin", async () => {
-    const corsApp = createApp({ corsOrigin: "https://demo.example" });
+    const corsApp = createApp({
+      corsOrigin: "https://demo.example",
+      runtime: createMemoryRuntime()
+    });
     const response = await corsApp.request("/api/products", {
       headers: { Origin: "https://demo.example" }
     });
@@ -708,6 +884,9 @@ describe("MMD demo API", () => {
           .responses;
         expect(responses, `${path} should document rate limiting`).toHaveProperty(
           "429"
+        );
+        expect(responses, `${path} should document internal errors`).toHaveProperty(
+          "500"
         );
       }
     }

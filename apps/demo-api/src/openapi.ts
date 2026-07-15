@@ -56,8 +56,15 @@ const body = <Schema extends z.ZodType>(schema: Schema) => ({
   content: { "application/json": { schema } }
 });
 
-const rateLimitResponse = {
-  429: { ...json(ErrorResponseSchema), description: "Request rate limit exceeded" }
+const commonErrorResponses = {
+  429: {
+    ...json(ErrorResponseSchema),
+    description: "Request rate limit exceeded"
+  },
+  500: {
+    ...json(ErrorResponseSchema),
+    description: "Unhandled server error with a request ID"
+  }
 };
 
 const healthRoute = createRoute({
@@ -77,7 +84,7 @@ const metaRoute = createRoute({
   path: "/api/meta",
   tags: ["Metadata"],
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(MetaResponseSchema), description: "MMD model metadata" }
   }
 });
@@ -88,7 +95,7 @@ const mmdMetaRoute = createRoute({
   tags: ["MMD"],
   request: { body: body(MetaRequestSchema) },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(genericMetaResponse), description: "Models, views and dictionaries" },
     400: { ...json(ErrorResponseSchema), description: "Invalid metadata request" }
   }
@@ -100,7 +107,7 @@ const mmdQueryListRoute = createRoute({
   tags: ["MMD"],
   request: { body: body(QueryListRequestSchema) },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(genericListResponse), description: "Metadata-driven list query" },
     400: { ...json(ErrorResponseSchema), description: "Invalid or unsafe query" },
     404: { ...json(ErrorResponseSchema), description: "Model not found" }
@@ -113,7 +120,7 @@ const mmdQueryOneRoute = createRoute({
   tags: ["MMD"],
   request: { body: body(QueryOneRequestSchema) },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(genericRecordResponse), description: "One record" },
     400: { ...json(ErrorResponseSchema), description: "Invalid query" },
     404: { ...json(ErrorResponseSchema), description: "Record not found" }
@@ -126,7 +133,7 @@ const mmdSaveRoute = createRoute({
   tags: ["MMD"],
   request: { body: body(SaveRequestSchema) },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(genericRecordResponse), description: "Record updated" },
     201: { ...json(genericRecordResponse), description: "Record created" },
     400: { ...json(ErrorResponseSchema), description: "Invalid record" },
@@ -143,7 +150,7 @@ const mmdRemoveRoute = createRoute({
   tags: ["MMD"],
   request: { body: body(RemoveRequestSchema) },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: {
       ...json(
         z.object({
@@ -168,7 +175,7 @@ const mmdActionRoute = createRoute({
     body: body(ExecuteActionRequestSchema.omit({ action: true }))
   },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: {
       ...json(
         z.object({
@@ -191,7 +198,7 @@ const listProductsRoute = createRoute({
   tags: ["Products"],
   request: { query: ListQuerySchema },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(ProductListResponseSchema), description: "Product list" },
     400: { ...json(ErrorResponseSchema), description: "Invalid query" }
   }
@@ -203,7 +210,7 @@ const getProductRoute = createRoute({
   tags: ["Products"],
   request: { params: idParams },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(ProductResponseSchema), description: "Product details" },
     404: { ...json(ErrorResponseSchema), description: "Product not found" }
   }
@@ -220,7 +227,7 @@ const createProductRoute = createRoute({
     }
   },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     201: { ...json(ProductResponseSchema), description: "Product created" },
     400: { ...json(ErrorResponseSchema), description: "Invalid product" },
     409: {
@@ -242,7 +249,7 @@ const updateProductRoute = createRoute({
     }
   },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(ProductResponseSchema), description: "Product updated" },
     400: { ...json(ErrorResponseSchema), description: "Invalid product" },
     404: { ...json(ErrorResponseSchema), description: "Product not found" },
@@ -256,7 +263,7 @@ const deleteProductRoute = createRoute({
   tags: ["Products"],
   request: { params: idParams },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: {
       ...json(z.object({ success: z.literal(true) })),
       description: "Product deleted"
@@ -277,7 +284,7 @@ const executeActionRoute = createRoute({
     }
   },
   responses: {
-    ...rateLimitResponse,
+    ...commonErrorResponses,
     200: { ...json(ActionResponseSchema), description: "Action result" },
     400: { ...json(ErrorResponseSchema), description: "Invalid action request" },
     409: { ...json(ErrorResponseSchema), description: "Demo session record limit" },

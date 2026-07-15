@@ -1,6 +1,5 @@
 import type { MmdEngine } from "mmd-engine";
 
-import { MemoryProductAdapter } from "./memory-adapter";
 import { createProductEngine } from "./product-engine";
 import {
   PrismaProductAdapter,
@@ -43,26 +42,50 @@ async function createProductPrismaClient(
   return new PrismaClient({ adapter }) as unknown as ProductPrismaClient;
 }
 
-export class NeonRuntimeFactory {
-  readonly #clients = new Map<string, Promise<ProductPrismaClient>>();
-  readonly #seededSessions = new WeakMap<
-    ProductPrismaClient,
-    Map<string, Promise<void>>
-  >();
+async function disconnectClient(
+  client: ProductPrismaClient,
+  operation: "initialization" | "request" | "cleanup"
+): Promise<void> {
+  try {
+    await client.$disconnect();
+  } catch (error) {
+    const described = error instanceof Error
+      ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack ?? `${error.name}: ${error.message}`
+        }
+      : {
+          name: "UnknownError",
+          message: "Unknown Prisma disconnect failure"
+        };
+    console.error({
+      event: "mmd_prisma_disconnect_error",
+      operation,
+      error: described
+    });
+  }
+}
 
+export class NeonRuntimeFactory {
   constructor(
     readonly createClient: ProductPrismaClientFactory =
       createProductPrismaClient
   ) {}
 
   async create(databaseUrl: string, sessionId: string): Promise<ProductRuntime> {
-    const client = await this.#getClient(databaseUrl);
+    const client = await this.createClient(databaseUrl);
     const productAdapter = new PrismaProductAdapter(client, sessionId);
-    await this.#ensureSeeded(client, sessionId, productAdapter);
+    try {
+      await productAdapter.seed();
+    } catch (error) {
+      await disconnectClient(client, "initialization");
+      throw error;
+    }
 
     return {
       engine: createProductEngine(productAdapter),
-      dispose: async () => undefined
+      dispose: () => disconnectClient(client, "request")
     };
   }
 
@@ -70,73 +93,34 @@ export class NeonRuntimeFactory {
     databaseUrl: string,
     cutoff: Date
   ): Promise<DemoCleanupResult> {
-    const client = (await this.#getClient(databaseUrl)) as ProductPrismaClient &
-      CleanupQueryClient;
-    const total: DemoCleanupResult = {
-      sessionsDeleted: 0,
-      productsDeleted: 0
-    };
+    const client = (await this.createClient(
+      databaseUrl
+    )) as ProductPrismaClient & CleanupQueryClient;
+    try {
+      const total: DemoCleanupResult = {
+        sessionsDeleted: 0,
+        productsDeleted: 0
+      };
 
-    for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
-      const [result] = await client.$queryRawUnsafe<
-        Array<{ sessions_deleted: number; products_deleted: number }>
-      >(CLEANUP_QUERY, cutoff.toISOString(), CLEANUP_BATCH_SIZE);
-      const sessionsDeleted = Number(result?.sessions_deleted ?? 0);
-      const productsDeleted = Number(result?.products_deleted ?? 0);
-      total.sessionsDeleted += sessionsDeleted;
-      total.productsDeleted += productsDeleted;
-      if (sessionsDeleted === 0) break;
-    }
-
-    if (total.sessionsDeleted > 0) this.#seededSessions.delete(client);
-    return total;
-  }
-
-  #getClient(databaseUrl: string): Promise<ProductPrismaClient> {
-    const cached = this.#clients.get(databaseUrl);
-    if (cached) return cached;
-
-    const pending = this.createClient(databaseUrl);
-    this.#clients.set(databaseUrl, pending);
-    void pending.catch(() => {
-      if (this.#clients.get(databaseUrl) === pending) {
-        this.#clients.delete(databaseUrl);
+      for (let batch = 0; batch < CLEANUP_MAX_BATCHES; batch += 1) {
+        const [result] = await client.$queryRawUnsafe<
+          Array<{ sessions_deleted: number; products_deleted: number }>
+        >(CLEANUP_QUERY, cutoff.toISOString(), CLEANUP_BATCH_SIZE);
+        const sessionsDeleted = Number(result?.sessions_deleted ?? 0);
+        const productsDeleted = Number(result?.products_deleted ?? 0);
+        total.sessionsDeleted += sessionsDeleted;
+        total.productsDeleted += productsDeleted;
+        if (sessionsDeleted === 0) break;
       }
-    });
-    return pending;
-  }
 
-  #ensureSeeded(
-    client: ProductPrismaClient,
-    sessionId: string,
-    adapter: PrismaProductAdapter
-  ): Promise<void> {
-    let sessions = this.#seededSessions.get(client);
-    if (!sessions) {
-      sessions = new Map();
-      this.#seededSessions.set(client, sessions);
+      return total;
+    } finally {
+      await disconnectClient(client, "cleanup");
     }
-
-    const cached = sessions.get(sessionId);
-    if (cached) return cached;
-
-    const pending = adapter.seed();
-    sessions.set(sessionId, pending);
-    void pending.catch(() => {
-      if (sessions.get(sessionId) === pending) sessions.delete(sessionId);
-    });
-    return pending;
   }
 }
 
 const neonRuntimeFactory = new NeonRuntimeFactory();
-
-export function createMemoryRuntime(): ProductRuntime {
-  return {
-    engine: createProductEngine(new MemoryProductAdapter()),
-    dispose: async () => undefined
-  };
-}
 
 export async function createNeonRuntime(
   databaseUrl: string,

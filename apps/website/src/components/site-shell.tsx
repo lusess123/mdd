@@ -6,6 +6,7 @@ import type { PropsWithChildren } from "react";
 
 import { useMmd } from "./mmd-provider";
 import type { MessageKey } from "../lib/i18n";
+import { isNavigationActive } from "../lib/navigation";
 
 const navigation: Array<{ href: string; label: MessageKey }> = [
   { href: "/", label: "nav.home" },
@@ -27,15 +28,19 @@ export function SiteShell({ children }: PropsWithChildren) {
           <span className="brand-version">alpha</span>
         </Link>
         <nav className="main-nav" aria-label="Primary navigation">
-          {navigation.map((item) => (
-            <Link
-              className={pathname === item.href ? "active" : undefined}
-              href={item.href}
-              key={item.href}
-            >
-              {t(item.label)}
-            </Link>
-          ))}
+          {navigation.map((item) => {
+            const active = isNavigationActive(pathname, item.href);
+            return (
+              <Link
+                aria-current={active ? "page" : undefined}
+                className={active ? "active" : undefined}
+                href={item.href}
+                key={item.href}
+              >
+                {t(item.label)}
+              </Link>
+            );
+          })}
         </nav>
         <div className="topbar-actions">
           <button

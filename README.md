@@ -12,6 +12,8 @@ Install [Bun](https://bun.sh/), then run:
 
 ```bash
 bun install
+export DATABASE_URL='postgresql://...'
+bun --cwd=apps/demo-api run db:migrate
 bun run dev
 ```
 
@@ -20,7 +22,7 @@ bun run dev
 - API reference: <http://localhost:8787/docs>
 - OpenAPI: <http://localhost:8787/openapi.json>
 
-Without `DATABASE_URL`, the API uses the in-memory adapter. Provide a Neon PostgreSQL connection to use the Prisma + Neon adapter.
+`DATABASE_URL` is required. The runnable API never falls back to in-memory data; the memory adapter is retained only as an adapter example and test fixture. Do not commit the connection string.
 
 ## Deployment endpoints
 

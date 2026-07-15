@@ -12,6 +12,8 @@ MMD 是一套元数据驱动的全栈管理工具。定义一次模型，即可�
 
 ```bash
 bun install
+export DATABASE_URL='postgresql://...'
+bun --cwd=apps/demo-api run db:migrate
 bun run dev
 ```
 
@@ -20,7 +22,7 @@ bun run dev
 - API 文档：<http://localhost:8787/docs>
 - OpenAPI：<http://localhost:8787/openapi.json>
 
-未配置 `DATABASE_URL` 时，API 使用内存适配器；配置 Neon PostgreSQL 连接后使用 Prisma + Neon 适配器。
+`DATABASE_URL` 是必填项。可运行的 API 不会回退到内存数据；内存适配器仅保留为适配器示例和测试夹具。连接字符串不得提交到仓库。
 
 ## 部署地址
 

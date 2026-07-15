@@ -144,12 +144,16 @@ Cloudflare 生产环境使用来源 IP 的哈希摘要作为会话 ID，客户�
 ```json
 {
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid request",
-    "details": []
+    "code": "INTERNAL_ERROR",
+    "message": "Internal server error",
+    "details": {
+      "requestId": "4f26e77e-8de1-4aae-a8f6-86e8c1fd2aa0"
+    }
   }
 }
 ```
+
+每个响应都会返回 `X-Request-Id`。遇到 `500` 时，用该值关联服务端结构化日志中的错误堆栈。生产环境默认不向客户端暴露堆栈；仅在临时调试时配置 `EXPOSE_ERROR_STACKS=true`，响应才会增加 `error.details.stack`。应用输出的结构化错误日志不会记录认证头、Cookie、请求体或查询参数。
 
 常见错误码：
 

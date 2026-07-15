@@ -76,6 +76,8 @@ jobs:
             --header 'Content-Type: application/json' \
             --data '{"models":["Product"]}' \
             https://mmd-api.zyking.xyz/api/mmd/meta
+      - name: Verify API under serial and concurrent requests
+        run: bun apps/demo-api/scripts/verify-production.ts
 
   deploy-website:
     name: Deploy static website
