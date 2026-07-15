@@ -1,0 +1,23 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "jsx": "react-jsx",
+    "paths": {
+      "antd": ["apps/website/node_modules/antd"],
+      "mmd-contracts": ["packages/mmd-contracts/dist/index.d.ts"],
+      "mmd-engine": ["packages/mmd-engine/dist/index.d.ts"],
+      "mmd-renderer": ["packages/mmd-renderer/dist/index.d.ts"],
+      "react": ["apps/website/node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["apps/website/node_modules/@types/react/jsx-runtime.d.ts"],
+      "react/jsx-dev-runtime": ["apps/website/node_modules/@types/react/jsx-dev-runtime.d.ts"],
+      "react-dom": ["apps/website/node_modules/@types/react-dom/index.d.ts"]
+    },
+    "typeRoots": [
+      "../node_modules/@types",
+      "../apps/website/node_modules/@types"
+    ],
+    "types": ["bun", "react", "react-dom"]
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

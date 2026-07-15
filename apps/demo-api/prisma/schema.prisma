@@ -1,0 +1,42 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus {
+  draft
+  published
+  archived
+}
+
+model DemoSession {
+  id             String   @id @db.VarChar(64)
+  productCount   Int      @default(0) @map("product_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+
+  @@map("mmd_demo_sessions")
+}
+
+model Product {
+  id        String        @id @default(cuid()) @db.VarChar(64)
+  sessionId String        @map("session_id") @db.VarChar(64)
+  name      String        @db.VarChar(160)
+  sku       String        @db.VarChar(80)
+  cover     String        @default("") @db.Text
+  price     Decimal       @db.Decimal(12, 2)
+  tags      String[]      @default([])
+  status    ProductStatus @default(draft)
+  inventory Int           @default(0)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@unique([sessionId, sku])
+  @@index([sessionId, createdAt])
+  @@map("mmd_products")
+}

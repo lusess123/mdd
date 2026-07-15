@@ -69,6 +69,7 @@ web_modules/
 .env
 .env.*
 !.env.example
+!.dev.vars.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -110,6 +111,9 @@ dist
 # Serverless directories
 .serverless/
 
+# Cloudflare local state
+.wrangler/
+
 # FuseBox cache
 .fusebox/
 
@@ -141,3 +145,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+.DS_Store
+
+# Local credentials and private work-item configuration
+.ai-doc/config/
+apps/demo-api/src/generated/

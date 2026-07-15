@@ -1,0 +1,41 @@
+{
+  "name": "mmd-contracts",
+  "version": "0.1.0",
+  "description": "Shared metadata and API contracts for MMD applications.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --sourcemap --target es2022",
+    "prepack": "bun run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lusess123/mdd.git",
+    "directory": "packages/mmd-contracts"
+  },
+  "homepage": "https://mmd.zyking.xyz",
+  "bugs": {
+    "url": "https://github.com/lusess123/mdd/issues"
+  }
+}

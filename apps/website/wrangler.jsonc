@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mmd-website",
+  "compatibility_date": "2026-07-14",
+  "account_id": "f04aaf2faa3d0eef049f6fdbc0af0c37",
+  "routes": [
+    {
+      "pattern": "mmd.zyking.xyz",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./out",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

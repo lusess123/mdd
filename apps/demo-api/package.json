@@ -1,0 +1,33 @@
+{
+  "name": "mmd-demo-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/dev.ts",
+    "dev:worker": "wrangler dev",
+    "build": "prisma generate && wrangler deploy --dry-run --outdir dist",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "test": "bun test",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "deploy": "prisma generate && wrangler deploy"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.5.0",
+    "@prisma/adapter-neon": "^7.8.0",
+    "@scalar/hono-api-reference": "^0.11.9",
+    "hono": "^4.12.30",
+    "mmd-contracts": "workspace:*",
+    "mmd-engine": "workspace:*",
+    "@prisma/client": "^7.8.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.4",
+    "prisma": "^7.8.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.110.0"
+  }
+}
