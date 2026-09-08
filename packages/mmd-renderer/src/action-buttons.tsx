@@ -49,12 +49,13 @@ export function ActionButtons({
 }: ActionButtonsProps) {
   const { actionRegistry, notifySuccess, reportError, t } = useMmd();
   const [loadingKey, setLoadingKey] = useState<string>();
-  const visibleActions = actions.filter((action) => isActionVisible(action, record));
+  const actionRecord = record ?? context.record;
+  const visibleActions = actions.filter((action) => isActionVisible(action, actionRecord));
 
   const run = async (action: RendererAction, key: string) => {
     setLoadingKey(key);
     try {
-      await actionRegistry.execute(action, { ...context, record });
+      await actionRegistry.execute(action, { ...context, record: actionRecord });
       const messageKey = feedbackKey(action);
       if (messageKey) notifySuccess(t(messageKey));
     } catch (cause) {
@@ -70,7 +71,7 @@ export function ActionButtons({
         const key = actionKey(action, index);
         const label = actionLabel(action, t);
         const disabled =
-          isActionDisabled(action, record) ||
+          isActionDisabled(action, actionRecord) ||
           (action.placement === "bulk" && !context.selectedIds?.length);
         const button = (
           <Button

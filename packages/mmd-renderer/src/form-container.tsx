@@ -92,7 +92,9 @@ export function FormContainer({
   }, [client, container.name, fields, form, id, reportError]);
 
   const submit = useCallback(async () => {
-    const values = await form.validateFields();
+    const values = await form.validateFields().catch(() => {
+      throw new Error(t("validation.form"));
+    });
     const saved = await client.save({
       model: container.name,
       id,
@@ -103,7 +105,7 @@ export function FormContainer({
     form.setFieldsValue(saved);
     onSaved?.(saved);
     return saved;
-  }, [client, container.name, fields, form, id, onSaved]);
+  }, [client, container.name, fields, form, id, onSaved, t]);
 
   if (loading) {
     return (

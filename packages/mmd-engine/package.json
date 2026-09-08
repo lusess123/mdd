@@ -1,6 +1,6 @@
 {
   "name": "mmd-engine",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Metadata-driven CRUD and action engine for MMD applications.",
   "type": "module",
   "sideEffects": false,
@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "mmd-contracts": "0.1.1"
+    "mmd-contracts": "0.1.2"
   },
   "devDependencies": {
     "@types/bun": "^1.3.4",

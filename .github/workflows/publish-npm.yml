@@ -94,11 +94,11 @@ jobs:
           consumer="$(mktemp -d)"
           cd "$consumer"
           npm init -y
-          for attempt in {1..6}; do
-            if npm install --ignore-scripts --no-audit --no-fund "${specs[@]}" react@19 react-dom@19 antd@6; then
+          for attempt in {1..18}; do
+            if npm install --prefer-online --ignore-scripts --no-audit --no-fund "${specs[@]}" react@19 react-dom@19 antd@6; then
               break
             fi
-            [ "$attempt" -lt 6 ] || exit 1
+            [ "$attempt" -lt 18 ] || exit 1
             sleep 10
           done
           node --input-type=module -e '

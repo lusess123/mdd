@@ -50,6 +50,7 @@ const zhCN: MmdMessages = {
   "errors.code.INTERNAL_ERROR": "服务暂时不可用",
   "validation.required": "请填写{field}",
   "validation.json": "JSON 格式不正确，请检查引号、逗号和括号",
+  "validation.form": "请先修正表单中标出的字段",
   "json.format": "格式化 JSON",
 };
 
@@ -93,6 +94,7 @@ const enUS: MmdMessages = {
   "errors.code.INTERNAL_ERROR": "Service temporarily unavailable",
   "validation.required": "{field} is required",
   "validation.json": "Invalid JSON. Check quotes, commas and brackets.",
+  "validation.form": "Correct the highlighted form fields before saving.",
   "json.format": "Format JSON",
 };
 
