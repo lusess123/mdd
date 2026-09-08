@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Card, Form, Skeleton, Space } from "antd";
 
 import { isJsonField, validateJson } from "./json-value";
+import { isReadOnlyField, writableFormValues } from "./form-values";
 import { ActionButtons } from "./action-buttons";
 import { MmdField } from "./field-renderer";
 import { translateMetadataLabel } from "./i18n";
@@ -98,14 +99,14 @@ export function FormContainer({
     const saved = await client.save({
       model: container.name,
       id,
-      row: values,
+      row: writableFormValues({ values, fields, keyField }),
       fields: fields.map((field) => field.name),
     });
     setDraft(saved);
     form.setFieldsValue(saved);
     onSaved?.(saved);
     return saved;
-  }, [client, container.name, fields, form, id, onSaved, t]);
+  }, [client, container.name, fields, form, id, keyField, onSaved, t]);
 
   if (loading) {
     return (
@@ -150,7 +151,7 @@ export function FormContainer({
                 field.label,
               )}
               rules={[
-                ...(field.required
+                ...(field.required && !isReadOnlyField(field, keyField)
                   ? [
                       {
                         required: true,
@@ -165,7 +166,7 @@ export function FormContainer({
                       },
                     ]
                   : []),
-                ...(isJsonField(field)
+                ...(isJsonField(field) && !isReadOnlyField(field, keyField)
                   ? [
                       {
                         validator: (_rule: unknown, value: unknown) =>
@@ -181,7 +182,7 @@ export function FormContainer({
                 field={field}
                 scene="form"
                 value={undefined}
-                disabled={field.readOnly}
+                disabled={isReadOnlyField(field, keyField)}
               />
             </Form.Item>
           ))}

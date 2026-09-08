@@ -65,6 +65,8 @@ export interface DataContainer {
 
 export interface ListDataContainer extends DataContainer {
   type: "list";
+  /** 是否在业务字段前显示跨页连续序号；默认 false，不作为查询或写入字段。 */
+  showRowNumber?: boolean;
   search: SearchConfig;
   actions: ActionDefinition[];
   dataActions: ActionDefinition[];

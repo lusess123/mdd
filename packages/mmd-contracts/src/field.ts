@@ -81,6 +81,7 @@ export interface FieldDefinition {
   type?: FieldType;
   required?: boolean;
   readOnly?: boolean;
+  /** Key 默认隐藏；显式 true 时在列表和详情显示，仍受 pageStyle 控制。 */
   list?: boolean;
   options?: FieldOption[];
   pageStyle?: import("./model").PageStyle[];

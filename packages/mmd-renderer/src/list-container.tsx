@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -15,10 +15,13 @@ import {
 import { ActionButtons } from "./action-buttons";
 import { MmdField } from "./field-renderer";
 import { translateMetadataLabel } from "./i18n";
+import { listTableSnapshot, nextListPage } from "./list-pagination";
 import { resolveContainerFields, resolveFieldOptions } from "./metadata";
 import { useMmd } from "./provider";
+import { createRowNumberColumn } from "./row-number";
 import type {
   MmdRecord,
+  MmdListResult,
   OpenViewInput,
   RendererAction,
   RendererDataContainer,
@@ -46,7 +49,13 @@ function uniqueActions(actions: RendererAction[]): RendererAction[] {
 
 function defaultListFields(model?: RendererModel): RendererField[] {
   return (model?.fields ?? []).filter(
-    (field) => field.list !== false && String(field.fieldType ?? field.type).toLowerCase() !== "key",
+    (field) =>
+      field.list !== false &&
+      (String(field.fieldType ?? field.type).toLowerCase() !== "key" ||
+        field.list === true) &&
+      (!Array.isArray(field.pageStyle) ||
+        field.pageStyle.length === 0 ||
+        field.pageStyle.some((style) => ["List", "All", "ReadOnly"].includes(style))),
   );
 }
 
@@ -58,10 +67,18 @@ export function ListContainer({
   onRowChange,
 }: ListContainerProps) {
   const { client, meta, reportError, t } = useMmd();
-  const [rows, setRows] = useState<MmdRecord[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(container.pageSize ?? 20);
+  const [data, setData] = useState<MmdListResult>({
+    rows: [],
+    total: 0,
+    page: 1,
+    pageSize: container.pageSize ?? 20,
+  });
+  const { rows } = data;
+  const requestVersion = useRef(0);
+  const [paginationRequest, setPaginationRequest] = useState({
+    page: 1,
+    pageSize: container.pageSize ?? 20,
+  });
   const [search, setSearch] = useState<MmdRecord>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,29 +101,31 @@ export function ListContainer({
   }, [container, meta, model]);
 
   const load = useCallback(async () => {
+    const version = ++requestVersion.current;
     setLoading(true);
     setError(undefined);
     try {
       const result = await client.list({
         model: container.name,
         fields: fields.map((field) => field.name),
-        page,
-        pageSize,
+        page: paginationRequest.page,
+        pageSize: paginationRequest.pageSize,
         where,
         search,
       });
-      setRows(result.rows);
-      setTotal(result.total);
+      if (version === requestVersion.current) setData(result);
     } catch (cause) {
-      const nextError = reportError(cause);
-      setError(nextError);
+      if (version === requestVersion.current) setError(reportError(cause));
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
-  }, [client, container.name, fields, page, pageSize, reportError, search, where]);
+  }, [client, container.name, fields, paginationRequest, reportError, search, where]);
 
   useEffect(() => {
     void load();
+    return () => {
+      requestVersion.current += 1;
+    };
   }, [load]);
 
   const pageActions = uniqueActions([
@@ -141,9 +160,19 @@ export function ListContainer({
         <MmdField field={field} scene="list" value={value} record={record} />
       ),
     }));
-    if (rowActions.length === 0) return fieldColumns;
+    const displayColumns: TableColumnsType<MmdRecord> = container.showRowNumber
+      ? [
+          createRowNumberColumn({
+            page: data.page,
+            pageSize: data.pageSize,
+            title: t("common.rowNumber"),
+          }),
+          ...fieldColumns,
+        ]
+      : fieldColumns;
+    if (rowActions.length === 0) return displayColumns;
     return [
-      ...fieldColumns,
+      ...displayColumns,
       {
         key: "__actions",
         title: t("common.actions"),
@@ -153,11 +182,18 @@ export function ListContainer({
         ),
       },
     ];
-  }, [actionContext, fields, rowActions, t]);
+  }, [
+    actionContext,
+    container.showRowNumber,
+    data.page,
+    data.pageSize,
+    fields,
+    rowActions,
+    t,
+  ]);
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
-    setPage(pagination.current ?? 1);
-    setPageSize(pagination.pageSize ?? pageSize);
+    setPaginationRequest(nextListPage(pagination, data.pageSize));
   };
 
   return (
@@ -176,7 +212,7 @@ export function ListContainer({
             className="mmd-search-form"
             layout="inline"
             onFinish={(values) => {
-              setPage(1);
+              setPaginationRequest((previous) => ({ ...previous, page: 1 }));
               setSearch(values as MmdRecord);
             }}
           >
@@ -197,7 +233,7 @@ export function ListContainer({
                 <Button
                   htmlType="reset"
                   onClick={() => {
-                    setPage(1);
+                    setPaginationRequest((previous) => ({ ...previous, page: 1 }));
                     setSearch({});
                   }}
                 >
@@ -215,19 +251,12 @@ export function ListContainer({
         {error ? <Alert type="error" showIcon title={error.message} /> : null}
         <div className="mmd-table-region">
           <Table<MmdRecord>
+            {...listTableSnapshot(data)}
             rowKey={(row) => String(row[keyField])}
             columns={columns}
-            dataSource={rows}
             loading={loading}
             locale={{ emptyText: t("common.noData") }}
             scroll={{ x: "max-content" }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              responsive: true,
-              showSizeChanger: true,
-            }}
             rowSelection={
               pageActions.some((action) => action.placement === "bulk")
                 ? {

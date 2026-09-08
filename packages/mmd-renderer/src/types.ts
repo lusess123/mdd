@@ -72,6 +72,8 @@ export interface RendererDataContainer {
   actions?: RendererAction[];
   dataActions?: RendererAction[];
   pageSize?: number;
+  /** 在业务字段前显示跨页连续序号；默认 false。 */
+  showRowNumber?: boolean;
   [key: string]: unknown;
 }
 

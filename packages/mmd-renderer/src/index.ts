@@ -12,6 +12,8 @@ export * from "./i18n";
 export * from "./list-container";
 export * from "./metadata";
 export * from "./provider";
+export * from "./readonly-identifier";
+export * from "./row-number";
 export * from "./transport";
 export * from "./types";
 export * from "./view-renderer";

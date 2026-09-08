@@ -197,6 +197,23 @@ describe("MmdEngine", () => {
     expect(adapter.rows).toHaveLength(0);
   });
 
+  test("showing a Key never permits writing it or another read-only field", async () => {
+    const registry = new MmdRegistry().registerModel({
+      ...productModel,
+      fields: productModel.fields.map((field) =>
+        field.name === "id" ? { ...field, list: true } : field,
+      ),
+    });
+    const adapter = new MemoryAdapter([{ id: "p1", name: "Alpha" }]);
+    const engine = new MmdEngine({ registry, adapter });
+    for (const data of [{ id: "p2" }, { updatedAt: "2026-09-01T00:00:00Z" }]) {
+      await expect(engine.save({ model: "Product", id: "p1", data }))
+        .rejects.toMatchObject({ code: "INVALID_INPUT" });
+    }
+    expect(adapter.lastUpdateInput).toBeUndefined();
+    expect(adapter.rows).toEqual([{ id: "p1", name: "Alpha" }]);
+  });
+
   test("旧版 del 动作也必须先由模型声明", async () => {
     const { engine, adapter } = createEngine([{ id: "p1", name: "Alpha" }]);
 

@@ -53,7 +53,9 @@ function toViewField(
     regName: field.dictName ?? field.regName,
     renderType: field.type ? undefined : mapper?.[render],
     type: field.type,
-    renderer: field.type,
+    renderer:
+      field.type ??
+      (resolveFieldType(field) === ModelFieldType.Key ? "key" : undefined),
   };
 }
 
@@ -62,7 +64,7 @@ export function modelToListView(model: ModelDefinition): ViewDefinition {
     const type = resolveFieldType(field);
     return (
       field.list !== false &&
-      type !== ModelFieldType.Key &&
+      (type !== ModelFieldType.Key || field.list === true) &&
       type !== ModelFieldType.ToMany &&
       isVisible(field, PageStyle.List, true)
     );
@@ -150,7 +152,7 @@ export function modelToDetailView(model: ModelDefinition): ViewDefinition {
     fields: model.fields
       .filter(
         (field) =>
-          resolveFieldType(field) !== ModelFieldType.Key &&
+          (resolveFieldType(field) !== ModelFieldType.Key || field.list === true) &&
           resolveFieldType(field) !== ModelFieldType.ToMany &&
           isVisible(field, PageStyle.Detail, true),
       )

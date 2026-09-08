@@ -11,6 +11,7 @@ import {
 
 import { localDateTime, dateTimeInstant } from "./datetime-value";
 import { JsonField } from "./json-field";
+import { ReadonlyIdentifier } from "./readonly-identifier";
 import { FieldRegistry } from "./field-registry";
 import { useMmd } from "./provider";
 import type { FieldRendererProps, RendererDictOption } from "./types";
@@ -252,7 +253,8 @@ const datetime = {
 export function createDefaultFieldRegistry(): FieldRegistry {
   const registry = new FieldRegistry();
   registry.register("json", { default: JsonField });
-  for (const type of ["text", "key", "detail"]) registry.register(type, text);
+  for (const type of ["text", "detail"]) registry.register(type, text);
+  registry.register("key", { default: ReadonlyIdentifier, search: TextEdit });
   for (const type of ["textarea", "html", "htmldetail"]) {
     registry.register(type, textarea);
   }
