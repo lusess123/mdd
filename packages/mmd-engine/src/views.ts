@@ -12,7 +12,7 @@ import {
   type ListDataContainer,
   type ModelDefinition,
   type ViewDefinition,
-  type ViewField
+  type ViewField,
 } from "mmd-contracts";
 
 function keyField(model: ModelDefinition): string {
@@ -27,7 +27,7 @@ function keyField(model: ModelDefinition): string {
 function isVisible(
   field: FieldDefinition,
   style: PageStyle,
-  allowReadOnly: boolean
+  allowReadOnly: boolean,
 ): boolean {
   if (!field.pageStyle?.length) return true;
   return (
@@ -39,7 +39,11 @@ function isVisible(
 
 function toViewField(
   field: FieldDefinition,
-  render: "tableRenderType" | "detailRenderType" | "formRenderType" | "searchRenderType"
+  render:
+    | "tableRenderType"
+    | "detailRenderType"
+    | "formRenderType"
+    | "searchRenderType",
 ): ViewField {
   const mapper = ModelFieldMapper[resolveFieldType(field)];
   return {
@@ -49,7 +53,7 @@ function toViewField(
     regName: field.dictName ?? field.regName,
     renderType: field.type ? undefined : mapper?.[render],
     type: field.type,
-    renderer: field.type
+    renderer: field.type,
   };
 }
 
@@ -65,16 +69,50 @@ export function modelToListView(model: ModelDefinition): ViewDefinition {
   });
 
   const actions: ActionDefinition[] = [
-    { label: "new", type: "new", name: "new", placement: "page" },
-    { label: "refresh", type: "refresh", name: "refresh", placement: "page" },
-    ...(model.actions ?? []).filter((action) => action.placement !== "row")
+    ...(model.defaultActions === false
+      ? []
+      : [
+          {
+            label: "new",
+            type: "new" as const,
+            name: "new",
+            placement: "page" as const,
+          },
+          {
+            label: "refresh",
+            type: "refresh" as const,
+            name: "refresh",
+            placement: "page" as const,
+          },
+        ]),
+    ...(model.actions ?? []).filter((action) => action.placement !== "row"),
   ];
   const dataActions: ActionDefinition[] = [
     ...(model.dataActions ?? []),
     ...(model.actions ?? []).filter((action) => action.placement === "row"),
-    { label: "detail", type: "detail", name: "detail", placement: "row" },
-    { label: "edit", type: "edit", name: "edit", placement: "row" },
-    { label: "remove", type: "delete", name: "remove", placement: "row", tone: "danger" }
+    ...(model.defaultActions === false
+      ? []
+      : [
+          {
+            label: "detail",
+            type: "detail" as const,
+            name: "detail",
+            placement: "row" as const,
+          },
+          {
+            label: "edit",
+            type: "edit" as const,
+            name: "edit",
+            placement: "row" as const,
+          },
+          {
+            label: "remove",
+            type: "delete" as const,
+            name: "remove",
+            placement: "row" as const,
+            tone: "danger" as const,
+          },
+        ]),
   ];
 
   const container: ListDataContainer = {
@@ -87,20 +125,20 @@ export function modelToListView(model: ModelDefinition): ViewDefinition {
           (field) =>
             resolveFieldType(field) !== ModelFieldType.Key &&
             DefaultSearchFormFields.includes(resolveFieldType(field)) &&
-            isVisible(field, PageStyle.Search, false)
+            isVisible(field, PageStyle.Search, false),
         )
-        .map((field) => toViewField(field, "searchRenderType"))
+        .map((field) => toViewField(field, "searchRenderType")),
     },
     keyField: keyField(model),
     actions,
-    dataActions
+    dataActions,
   };
 
   return {
     label: model.label ?? model.name,
     name: `${model.name}.listview`,
     type: "list",
-    dataContainers: [container]
+    dataContainers: [container],
   };
 }
 
@@ -114,23 +152,23 @@ export function modelToDetailView(model: ModelDefinition): ViewDefinition {
         (field) =>
           resolveFieldType(field) !== ModelFieldType.Key &&
           resolveFieldType(field) !== ModelFieldType.ToMany &&
-          isVisible(field, PageStyle.Detail, true)
+          isVisible(field, PageStyle.Detail, true),
       )
       .map((field) => toViewField(field, "detailRenderType")),
-    keyField: keyField(model)
+    keyField: keyField(model),
   };
 
   return {
     label: model.label ?? model.name,
     name: `${model.name}.detailview`,
     type: "detail",
-    dataContainers: [container]
+    dataContainers: [container],
   };
 }
 
 export function modelToFormView(
   model: ModelDefinition,
-  mode: "new" | "edit" = "new"
+  mode: "new" | "edit" = "new",
 ): ViewDefinition {
   const style = mode === "new" ? PageStyle.New : PageStyle.Edit;
   const container: FormDataContainer = {
@@ -150,15 +188,21 @@ export function modelToFormView(
       .map((field) => toViewField(field, "formRenderType")),
     keyField: keyField(model),
     actions: [
-      { label: "submit", type: "submit", name: "submit", placement: "page", tone: "primary" }
-    ]
+      {
+        label: "submit",
+        type: "submit",
+        name: "submit",
+        placement: "page",
+        tone: "primary",
+      },
+    ],
   };
 
   return {
     label: model.label ?? model.name,
     name: `${model.name}.${mode}view`,
     type: mode,
-    dataContainers: [container]
+    dataContainers: [container],
   };
 }
 
@@ -167,7 +211,7 @@ export const modelToNewView = (model: ModelDefinition): ViewDefinition =>
   modelToFormView(model, "new");
 
 export function getContainer<T extends DataContainer = DataContainer>(
-  view: ViewDefinition
+  view: ViewDefinition,
 ): T | undefined {
   return view.dataContainers[0] as T | undefined;
 }

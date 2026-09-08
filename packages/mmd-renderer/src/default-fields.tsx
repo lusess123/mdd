@@ -9,6 +9,8 @@ import {
   Typography,
 } from "antd";
 
+import { localDateTime, dateTimeInstant } from "./datetime-value";
+import { JsonField } from "./json-field";
 import { FieldRegistry } from "./field-registry";
 import { useMmd } from "./provider";
 import type { FieldRendererProps, RendererDictOption } from "./types";
@@ -76,7 +78,12 @@ function MoneyDisplay({ value, field }: FieldRendererProps<number>) {
 }
 
 function BooleanDisplay({ value }: FieldRendererProps<boolean>) {
-  return <Tag color={value ? "green" : "default"}>{value ? "Yes" : "No"}</Tag>;
+  const { t } = useMmd();
+  return (
+    <Tag color={value ? "green" : "default"}>
+      {t(value ? "common.yes" : "common.no")}
+    </Tag>
+  );
 }
 
 function BooleanEdit({
@@ -142,7 +149,9 @@ function MultiDisplay({ field, value }: FieldRendererProps<unknown[]>) {
         const translated = t(key);
         return (
           <Tag color={option?.color} key={String(item)}>
-            {translated === key ? (option?.label ?? textValue(item)) : translated}
+            {translated === key
+              ? (option?.label ?? textValue(item))
+              : translated}
           </Tag>
         );
       })}
@@ -174,7 +183,9 @@ function DateTimeDisplay({ value }: FieldRendererProps) {
   const date = new Date(String(value ?? ""));
   return (
     <Typography.Text>
-      {Number.isNaN(date.getTime()) ? textValue(value) : date.toLocaleString(locale)}
+      {Number.isNaN(date.getTime())
+        ? textValue(value)
+        : date.toLocaleString(locale)}
     </Typography.Text>
   );
 }
@@ -183,14 +194,14 @@ function DateTimeEdit({
   value,
   disabled,
   onChange,
-}: FieldRendererProps<string>) {
-  const normalized = value ? value.slice(0, 16) : "";
+}: FieldRendererProps<string | null>) {
+  const normalized = localDateTime(value);
   return (
     <Input
       type="datetime-local"
       value={normalized}
       disabled={disabled}
-      onChange={(event) => onChange?.(event.target.value)}
+      onChange={(event) => onChange?.(dateTimeInstant(event.target.value))}
     />
   );
 }
@@ -240,6 +251,7 @@ const datetime = {
 
 export function createDefaultFieldRegistry(): FieldRegistry {
   const registry = new FieldRegistry();
+  registry.register("json", { default: JsonField });
   for (const type of ["text", "key", "detail"]) registry.register(type, text);
   for (const type of ["textarea", "html", "htmldetail"]) {
     registry.register(type, textarea);

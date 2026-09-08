@@ -10,7 +10,7 @@ export enum PageStyle {
   New = "New",
   Edit = "Edit",
   ReadOnly = "ReadOnly",
-  Search = "Search"
+  Search = "Search",
 }
 
 export interface ModelDefinition {
@@ -25,6 +25,8 @@ export interface ModelDefinition {
   fieldsObject?: Record<string, FieldDefinition>;
   dataLog?: boolean;
   dbSource?: string;
+  /** 是否自动添加标准 CRUD 按钮；false 时仅使用显式 actions/dataActions。默认 true。 */
+  defaultActions?: boolean;
   actions?: ActionDefinition[];
   dataActions?: ActionDefinition[];
 }
@@ -50,14 +52,14 @@ export const ModelFieldMapper: ModelFieldMapperDefinition = {
     tableRenderType: RenderType.BooleanDetail,
     detailRenderType: RenderType.BooleanDetail,
     formRenderType: RenderType.Switch,
-    searchRenderType: RenderType.BooleanSelect
+    searchRenderType: RenderType.BooleanSelect,
   },
   [ModelFieldType.DateTime]: {
     fieldType: ModelFieldType.DateTime,
     tableRenderType: RenderType.DateTimeDetail,
     detailRenderType: RenderType.DateTimeDetail,
     formRenderType: RenderType.DateTime,
-    searchRenderType: RenderType.DateTimeRange
+    searchRenderType: RenderType.DateTimeRange,
   },
   [ModelFieldType.Multi]: {
     fieldType: ModelFieldType.Multi,
@@ -65,7 +67,7 @@ export const ModelFieldMapper: ModelFieldMapperDefinition = {
     detailRenderType: RenderType.MultiDetail,
     formRenderType: RenderType.MultiSelect,
     searchRenderType: RenderType.MultiSelect,
-    formSpan: 0
+    formSpan: 0,
   },
   [ModelFieldType.Single]: {
     fieldType: ModelFieldType.Single,
@@ -73,70 +75,70 @@ export const ModelFieldMapper: ModelFieldMapperDefinition = {
     detailRenderType: RenderType.SingleDetail,
     formRenderType: RenderType.Single,
     searchRenderType: RenderType.MultiSelect,
-    formSpan: 2
+    formSpan: 2,
   },
   [ModelFieldType.Number]: {
     fieldType: ModelFieldType.Number,
     tableRenderType: RenderType.Detail,
     detailRenderType: RenderType.Detail,
     formRenderType: RenderType.Number,
-    searchRenderType: RenderType.NumberRange
+    searchRenderType: RenderType.NumberRange,
   },
   [ModelFieldType.Text]: {
     fieldType: ModelFieldType.Text,
     tableRenderType: RenderType.Detail,
     detailRenderType: RenderType.Detail,
     formRenderType: RenderType.Text,
-    searchRenderType: RenderType.Text
+    searchRenderType: RenderType.Text,
   },
   [ModelFieldType.ToMany]: {
     fieldType: ModelFieldType.ToMany,
     tableRenderType: RenderType.ToManyDetail,
     detailRenderType: RenderType.ToManyDetail,
-    formSpan: 0
+    formSpan: 0,
   },
   [ModelFieldType.ToOne]: {
     fieldType: ModelFieldType.ToOne,
     tableRenderType: RenderType.ToOneDetail,
     detailRenderType: RenderType.ToOneDetail,
     formRenderType: RenderType.ToOneEdit,
-    formSpan: 2
+    formSpan: 2,
   },
   [ModelFieldType.Key]: {
     fieldType: ModelFieldType.Key,
     tableRenderType: RenderType.Detail,
     detailRenderType: RenderType.Detail,
-    formRenderType: RenderType.Text
+    formRenderType: RenderType.Text,
   },
   [ModelFieldType.Html]: {
     fieldType: ModelFieldType.Html,
     detailRenderType: RenderType.HtmlDetail,
     formRenderType: RenderType.Html,
-    formSpan: 0
+    formSpan: 0,
   },
   [ModelFieldType.TextArea]: {
     fieldType: ModelFieldType.TextArea,
     formRenderType: RenderType.TextArea,
-    formSpan: 0
+    formSpan: 0,
   },
   [ModelFieldType.LinkOne]: {
     fieldType: ModelFieldType.LinkOne,
     tableRenderType: RenderType.LinkOneDetail,
     detailRenderType: RenderType.Detail,
     formRenderType: RenderType.Text,
-    formSpan: 0
+    formSpan: 0,
   },
   [ModelFieldType.LinkMany]: {
     fieldType: ModelFieldType.LinkMany,
     formRenderType: RenderType.TextArea,
-    formSpan: 0
+    formSpan: 0,
   },
   [ModelFieldType.Duration]: {
     fieldType: ModelFieldType.Duration,
     tableRenderType: RenderType.DurationDetail,
     detailRenderType: RenderType.DurationDetail,
-    formSpan: 0
-  }
+    formSpan: 0,
+  },
 };
 
 export type IModelFieldMapperItem = ModelFieldMapperItem;

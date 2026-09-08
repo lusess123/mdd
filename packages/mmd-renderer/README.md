@@ -9,3 +9,7 @@ npm install mmd-contracts mmd-renderer react react-dom antd
 React、React DOM 和 Ant Design 由宿主项目提供。当前示例验证于 React 19、Ant Design 6。
 
 [使用与扩展文档](https://mmd.zyking.xyz/docs/) · [在线示例](https://mmd.zyking.xyz/playground/) · [源码](https://github.com/lusess123/mdd) · MIT
+
+### JSON fields (0.1.1)
+
+Use `{ name: "config", type: "json", required: true }` to render a JSON editor with a format button and submit-time syntax validation. The editor keeps JSON text as its value (including primitives such as `false`, `0`, and `null`); parse and validate the business shape on your backend. Optional empty fields remain empty. Detail/list scenes display formatted JSON.

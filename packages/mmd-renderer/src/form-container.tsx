@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Card, Form, Skeleton, Space } from "antd";
 
+import { isJsonField, validateJson } from "./json-value";
 import { ActionButtons } from "./action-buttons";
 import { MmdField } from "./field-renderer";
 import { translateMetadataLabel } from "./i18n";
@@ -115,7 +116,12 @@ export function FormContainer({
 
   return (
     <Card
-      title={translateMetadataLabel(t, "models", container.name, container.label)}
+      title={translateMetadataLabel(
+        t,
+        "models",
+        container.name,
+        container.label,
+      )}
       className="mmd-form-container"
     >
       <Space
@@ -135,24 +141,39 @@ export function FormContainer({
             <Form.Item
               key={field.name}
               name={field.name}
-              label={translateMetadataLabel(t, "fields", field.name, field.label)}
-              rules={
-                field.required
+              label={translateMetadataLabel(
+                t,
+                "fields",
+                field.name,
+                field.label,
+              )}
+              rules={[
+                ...(field.required
                   ? [
                       {
                         required: true,
                         message: t("validation.required", {
-                            field: translateMetadataLabel(
-                              t,
-                              "fields",
-                              field.name,
-                              field.label,
-                            ),
+                          field: translateMetadataLabel(
+                            t,
+                            "fields",
+                            field.name,
+                            field.label,
+                          ),
                         }),
                       },
                     ]
-                  : undefined
-              }
+                  : []),
+                ...(isJsonField(field)
+                  ? [
+                      {
+                        validator: (_rule: unknown, value: unknown) =>
+                          validateJson(value)
+                            ? Promise.resolve()
+                            : Promise.reject(new Error(t("validation.json"))),
+                      },
+                    ]
+                  : []),
+              ]}
             >
               <MmdField
                 field={field}
@@ -165,7 +186,9 @@ export function FormContainer({
         </Form>
         <div className="mmd-form-actions">
           <ActionButtons
-            actions={container.actions?.length ? container.actions : defaultActions}
+            actions={
+              container.actions?.length ? container.actions : defaultActions
+            }
             record={draft}
             context={{
               model: container.name,

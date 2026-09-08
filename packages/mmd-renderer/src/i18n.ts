@@ -3,13 +3,17 @@ export type MmdMessages = Record<string, string>;
 export type MmdMessageOverrides = Partial<Record<MmdLocale, MmdMessages>>;
 export type MmdMessageCatalog = Record<MmdLocale, MmdMessages>;
 
-export function detectMmdLocale(...values: Array<string | null | undefined>): MmdLocale {
+export function detectMmdLocale(
+  ...values: Array<string | null | undefined>
+): MmdLocale {
   const preferred = values.find((value) => /^(zh|en)/i.test(value ?? ""));
   return preferred?.toLowerCase().startsWith("en") ? "en-US" : "zh-CN";
 }
 
 const zhCN: MmdMessages = {
   "common.loading": "加载中…",
+  "common.yes": "是",
+  "common.no": "否",
   "common.noData": "暂无数据",
   "common.cancel": "取消",
   "common.confirm": "确定",
@@ -45,10 +49,14 @@ const zhCN: MmdMessages = {
   "errors.code.RATE_LIMITED": "请求过于频繁，请稍后重试",
   "errors.code.INTERNAL_ERROR": "服务暂时不可用",
   "validation.required": "请填写{field}",
+  "validation.json": "JSON 格式不正确，请检查引号、逗号和括号",
+  "json.format": "格式化 JSON",
 };
 
 const enUS: MmdMessages = {
   "common.loading": "Loading…",
+  "common.yes": "Yes",
+  "common.no": "No",
   "common.noData": "No data",
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
@@ -84,6 +92,8 @@ const enUS: MmdMessages = {
   "errors.code.RATE_LIMITED": "Too many requests. Try again shortly.",
   "errors.code.INTERNAL_ERROR": "Service temporarily unavailable",
   "validation.required": "{field} is required",
+  "validation.json": "Invalid JSON. Check quotes, commas and brackets.",
+  "json.format": "Format JSON",
 };
 
 export function createMessageCatalog(

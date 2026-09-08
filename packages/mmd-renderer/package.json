@@ -1,6 +1,6 @@
 {
   "name": "mmd-renderer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Configurable React and Ant Design renderer for MMD metadata.",
   "type": "module",
   "sideEffects": false,
@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "mmd-contracts": "0.1.0"
+    "mmd-contracts": "0.1.1"
   },
   "peerDependencies": {
     "antd": ">=5",
