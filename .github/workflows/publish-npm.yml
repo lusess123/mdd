@@ -79,7 +79,7 @@ jobs:
               }
               echo "$name@$version already published with the same contents."
             elif jq -e '.error.code == "E404"' published.json > /dev/null; then
-              npm publish "packages/$filename" --tag beta --access public --provenance --ignore-scripts
+              npm publish "./packages/$filename" --tag beta --access public --provenance --ignore-scripts
             else
               cat published-error.log >&2
               exit 1
