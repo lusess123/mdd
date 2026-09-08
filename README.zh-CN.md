@@ -49,7 +49,7 @@ yarn add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
 bun add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
 ```
 
-首版已准备为 `0.1.0-beta.1`，使用 `beta` 标签；发布工作流成功后，上述命令才可安装。详见 [npm 发布说明](./docs/npm发布.md)。
+三个包已发布到 npm，首版为 `0.1.0-beta.1`，使用 `beta` 标签安装。详见 [npm 发布说明](./docs/npm发布.md)。
 
 ## 前端默认实现
 

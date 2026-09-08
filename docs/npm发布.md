@@ -1,6 +1,6 @@
 # npm 发布
 
-三个核心包首版为 `0.1.0-beta.1`，发布到 `beta` 标签。当前仅准备好发布流程，是否已发布以 npm Registry 和 Actions 结果为准。
+三个核心包已于 2026-09-08 发布 `0.1.0-beta.1`，`beta` 和 `latest` 当前均指向该版本。
 
 ## 准备
 
@@ -21,10 +21,10 @@ bun run release:check
 
 如果部分包已经发布，重跑时仅跳过内容完全一致的版本；内容不同必须升级版本。三个包版本保持一致，包间依赖使用相同的精确 beta 版本。
 
-发布后安装：
+安装 beta 版：
 
 ```bash
 pnpm add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
 ```
 
-`latest` 标签留给后续稳定版。
+后续稳定版发布时更新 `latest` 标签。

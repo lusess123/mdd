@@ -49,7 +49,7 @@ yarn add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
 bun add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
 ```
 
-The first release is prepared as `0.1.0-beta.1` under the `beta` tag. These commands become available after the npm publishing workflow succeeds. See the [publishing guide (Chinese)](./docs/npm发布.md).
+All three packages are published on npm as `0.1.0-beta.1`, available under the `beta` tag. See the [publishing guide (Chinese)](./docs/npm发布.md).
 
 ## Frontend defaults
 
