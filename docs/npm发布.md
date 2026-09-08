@@ -1,6 +1,6 @@
 # npm 发布
 
-三个核心包已于 2026-09-08 发布 `0.1.0-beta.1`，`beta` 和 `latest` 当前均指向该版本。
+正式版使用 `latest` 标签，预发布版使用 `beta` 标签，由包版本自动选择。
 
 ## 准备
 
@@ -19,12 +19,12 @@ bun run release:check
 2. 运行 GitHub Actions 的 `Publish MMD npm packages`，勾选 `publish`。不勾选时只验证。
 3. 工作流依次发布 contracts、engine、renderer，并验证从 npm 安装。
 
-如果部分包已经发布，重跑时仅跳过内容完全一致的版本；内容不同必须升级版本。三个包版本保持一致，包间依赖使用相同的精确 beta 版本。
+如果部分包已经发布，重跑时仅跳过内容完全一致的版本；内容不同必须升级版本。三个包版本保持一致，包间依赖使用相同的精确版本。
 
-安装 beta 版：
+安装正式版：
 
 ```bash
-pnpm add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
+npm install mmd-contracts mmd-engine mmd-renderer
 ```
 
-后续稳定版发布时更新 `latest` 标签。
+需要预发布版时，为包名加上 `@beta`。

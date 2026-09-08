@@ -3,7 +3,7 @@
 MMD 的模型、字段、视图、操作和 API 协议定义，供前后端共享。
 
 ```bash
-npm install mmd-contracts@beta
+npm install mmd-contracts
 ```
 
 ```ts

@@ -1,8 +1,8 @@
 export const installCommands = [
-  "npm install mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
-  "pnpm add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
-  "yarn add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
-  "bun add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
+  "npm install mmd-contracts mmd-engine mmd-renderer",
+  "pnpm add mmd-contracts mmd-engine mmd-renderer",
+  "yarn add mmd-contracts mmd-engine mmd-renderer",
+  "bun add mmd-contracts mmd-engine mmd-renderer",
 ] as const;
 
 export const installCode = installCommands.join("\n");
