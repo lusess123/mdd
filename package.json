@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "release:check": "bun run build:packages && bun scripts/check-npm-packages.ts",
     "build:packages": "bun run --filter mmd-contracts build && bun run --filter mmd-engine build && bun run --filter mmd-renderer build",
     "dev": "bun run build:packages && bun run --parallel --filter 'mmd-demo-*' dev",
     "test": "bun run build:packages && bun run --workspaces --if-present test",

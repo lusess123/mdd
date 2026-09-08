@@ -5,10 +5,10 @@ import { installCode, installCommands } from "./install-commands";
 describe("核心包安装命令", () => {
   it("按 npm、pnpm、yarn、bun 排列", () => {
     expect(installCommands).toEqual([
-      "npm install mmd-contracts mmd-engine mmd-renderer",
-      "pnpm add mmd-contracts mmd-engine mmd-renderer",
-      "yarn add mmd-contracts mmd-engine mmd-renderer",
-      "bun add mmd-contracts mmd-engine mmd-renderer",
+      "npm install mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
+      "pnpm add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
+      "yarn add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
+      "bun add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta",
     ]);
     expect(installCode).toBe(installCommands.join("\n"));
   });
