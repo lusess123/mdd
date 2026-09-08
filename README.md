@@ -43,13 +43,13 @@ mmd-renderer   React Provider, list/detail/forms, custom fields, and actions
 Install all three packages with your preferred package manager:
 
 ```bash
-npm install mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
-pnpm add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
-yarn add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
-bun add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
+npm install mmd-contracts mmd-engine mmd-renderer
+pnpm add mmd-contracts mmd-engine mmd-renderer
+yarn add mmd-contracts mmd-engine mmd-renderer
+bun add mmd-contracts mmd-engine mmd-renderer
 ```
 
-All three packages are published on npm as `0.1.0-beta.1`, available under the `beta` tag. See the [publishing guide (Chinese)](./docs/npm发布.md).
+All three packages are available on npm. These commands install the stable release (`latest`). See the [publishing guide (Chinese)](./docs/npm发布.md).
 
 ## Frontend defaults
 

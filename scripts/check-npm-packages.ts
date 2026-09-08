@@ -28,7 +28,8 @@ try {
     const manifest = JSON.parse(await readFile(join(source, "package.json"), "utf8"));
     version ??= manifest.version;
     assert.equal(manifest.version, version, "Package versions must match");
-    assert.match(manifest.version, /^\d+\.\d+\.\d+-beta\.\d+$/, "Expected a beta version");
+    assert.match(manifest.version, /^\d+\.\d+\.\d+(?:-beta\.\d+)?$/, "Expected a stable or beta version");
+    const tag = manifest.version.includes("-beta.") ? "beta" : "latest";
     assert.equal(manifest.private, undefined);
 
     for (const dependencies of [manifest.dependencies, manifest.peerDependencies]) {
@@ -54,7 +55,7 @@ try {
       assert(typeof file === "string" && /^(dist\/|package\.json$|README\.md$|LICENSE$)/.test(file));
     }
     tarballs.push(join(output, packed.filename));
-    packages.push({ name, version, filename: packed.filename, integrity: packed.integrity });
+    packages.push({ name, version, tag, filename: packed.filename, integrity: packed.integrity });
     console.log(`${name}@${version}: ${packed.files.length} files, ${packed.size} bytes`);
   }
 

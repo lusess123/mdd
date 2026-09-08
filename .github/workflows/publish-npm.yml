@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publish the checked beta packages to npm"
+        description: "Publish the checked packages to npm"
         type: boolean
         default: false
 
@@ -70,6 +70,7 @@ jobs:
           while IFS= read -r package; do
             name="$(jq -r .name <<< "$package")"
             version="$(jq -r .version <<< "$package")"
+            tag="$(jq -r .tag <<< "$package")"
             filename="$(jq -r .filename <<< "$package")"
             integrity="$(jq -r .integrity <<< "$package")"
             if npm view "$name@$version" dist.integrity --json > published.json 2> published-error.log; then
@@ -79,7 +80,7 @@ jobs:
               }
               echo "$name@$version already published with the same contents."
             elif jq -e '.error.code == "E404"' published.json > /dev/null; then
-              npm publish "./packages/$filename" --tag beta --access public --provenance --ignore-scripts
+              npm publish "./packages/$filename" --tag "$tag" --access public --provenance --ignore-scripts
             else
               cat published-error.log >&2
               exit 1
