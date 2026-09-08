@@ -1,0 +1,108 @@
+name: Publish MMD npm packages
+
+on:
+  pull_request:
+    paths:
+      - "packages/**"
+      - "scripts/check-npm-packages.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/publish-npm.yml"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the checked beta packages to npm"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mmd-npm-release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.4"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: bun install --frozen-lockfile
+      - run: bun run release:check
+      - run: bun test packages/mmd-engine/test packages/mmd-renderer/src apps/website/src/lib/install-commands.test.ts
+      - run: bun run --filter mmd-contracts --filter mmd-engine --filter mmd-renderer typecheck
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-packages
+          path: dist/npm/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-packages
+          path: packages
+      - name: Publish checked tarballs in dependency order
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NODE_AUTH_TOKEN" || { echo "Configure the NPM_TOKEN repository secret first." >&2; exit 1; }
+          while IFS= read -r package; do
+            name="$(jq -r .name <<< "$package")"
+            version="$(jq -r .version <<< "$package")"
+            filename="$(jq -r .filename <<< "$package")"
+            integrity="$(jq -r .integrity <<< "$package")"
+            if npm view "$name@$version" dist.integrity --json > published.json 2> published-error.log; then
+              test "$(jq -r . published.json)" = "$integrity" || {
+                echo "$name@$version already exists with different contents; bump the version." >&2
+                exit 1
+              }
+              echo "$name@$version already published with the same contents."
+            elif jq -e '.error.code == "E404"' published.json > /dev/null; then
+              npm publish "packages/$filename" --tag beta --access public --provenance --ignore-scripts
+            else
+              cat published-error.log >&2
+              exit 1
+            fi
+          done < <(jq -c '.[]' packages/packages.json)
+      - name: Verify public registry installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t specs < <(jq -r '.[] | "\(.name)@\(.version)"' packages/packages.json)
+          consumer="$(mktemp -d)"
+          cd "$consumer"
+          npm init -y
+          for attempt in {1..6}; do
+            if npm install --ignore-scripts --no-audit --no-fund "${specs[@]}" react@19 react-dom@19 antd@6; then
+              break
+            fi
+            [ "$attempt" -lt 6 ] || exit 1
+            sleep 10
+          done
+          node --input-type=module -e '
+            import { MmdEngine } from "mmd-engine";
+            import { MmdProvider } from "mmd-renderer";
+            if (typeof MmdEngine !== "function" || typeof MmdProvider !== "function") process.exit(1);
+          '
+          printf 'Published and verified: %s\n' "${specs[@]}" >> "$GITHUB_STEP_SUMMARY"

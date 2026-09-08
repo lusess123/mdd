@@ -43,13 +43,13 @@ mmd-renderer   React Provider、列表/详情/表单、自定义字段和操作
 使用任一包管理器安装三个核心包：
 
 ```bash
-npm install mmd-contracts mmd-engine mmd-renderer
-pnpm add mmd-contracts mmd-engine mmd-renderer
-yarn add mmd-contracts mmd-engine mmd-renderer
-bun add mmd-contracts mmd-engine mmd-renderer
+npm install mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
+pnpm add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
+yarn add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
+bun add mmd-contracts@beta mmd-engine@beta mmd-renderer@beta
 ```
 
-三个包的源码和测试均在仓库内。`mmd-contracts`、`mmd-engine`、`mmd-renderer` 在 2026-07-15 查询时均未被 npm 注册；正式发布前需要再次确认名称。
+首版已准备为 `0.1.0-beta.1`，使用 `beta` 标签；发布工作流成功后，上述命令才可安装。详见 [npm 发布说明](./docs/npm发布.md)。
 
 ## 前端默认实现
 
