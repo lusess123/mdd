@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Card, Form, Skeleton, Space } from "antd";
 
 import { createRecordFieldsSelector } from "./record-fields";
@@ -42,7 +42,9 @@ export function FormContainer({
   refresh,
   onSaved,
 }: FormContainerProps) {
-  const { client, meta, reportError, t } = useMmd();
+  const { client, meta, reportError, t, locale, changeGuard } = useMmd();
+  const formId = useId();
+  useEffect(() => () => changeGuard.setDirty({ id: formId, value: false }), [changeGuard, formId]);
   const [form] = Form.useForm<MmdRecord>();
   const [draft, setDraft] = useState<MmdRecord>({});
   const [loading, setLoading] = useState(Boolean(id));
@@ -67,11 +69,12 @@ export function FormContainer({
         .filter((field) => field.defaultValue !== undefined)
         .map((field) => [field.name, field.defaultValue]),
     );
+    changeGuard.setDirty({ id: formId, value: false });
     form.resetFields();
     setError(undefined);
     setDraft(defaults);
     form.setFieldsValue(defaults);
-  }, [container.name, id, recordFields, form]);
+  }, [container.name, id, recordFields, form, locale, changeGuard, formId]);
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
@@ -98,7 +101,7 @@ export function FormContainer({
     return () => {
       cancelled = true;
     };
-  }, [client, container.name, recordFields, form, id, reportError]);
+  }, [client, container.name, recordFields, form, id, reportError, locale]);
 
   const submit = useCallback(async () => {
     const values = await form.validateFields().catch(() => {
@@ -110,11 +113,12 @@ export function FormContainer({
       row: writableFormValues({ values, fields, keyField }),
       fields: recordFields,
     });
+    changeGuard.setDirty({ id: formId, value: false });
     setDraft(saved);
     form.setFieldsValue(saved);
     onSaved?.(saved);
     return saved;
-  }, [client, container.name, fields, recordFields, form, id, keyField, onSaved, t]);
+  }, [client, container.name, fields, recordFields, form, id, keyField, onSaved, t, changeGuard, formId]);
 
   if (loading) {
     return (
@@ -146,7 +150,7 @@ export function FormContainer({
           className="mmd-edit-form"
           form={form}
           layout="vertical"
-          onValuesChange={(_change, values) => setDraft(values)}
+          onValuesChange={(_change, values) => { changeGuard.setDirty({ id: formId, value: true }); setDraft(values); }}
         >
           {fields.map((field) => (
             <Form.Item

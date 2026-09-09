@@ -10,6 +10,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import { createChangeGuard } from "./lifecycle/change-guard";
 import { App } from "antd";
 
 import { ActionRegistry, createDefaultActionRegistry } from "./action-registry";
@@ -42,6 +43,8 @@ const emptyMeta: RendererMeta = { models: {}, views: {}, dicts: {} };
 export interface MmdProviderProps
   extends PropsWithChildren,
     MmdConfigOverrides {
+  /** 可与宿主语言/导航共享的未保存修改保护。 */
+  changeGuard?: ReturnType<typeof createChangeGuard>;
   environment?: MmdEnvironmentConfig;
   client?: MmdClient;
   initialMeta?: RendererMeta;
@@ -52,6 +55,7 @@ export interface MmdProviderProps
 }
 
 export interface MmdContextValue {
+  changeGuard: ReturnType<typeof createChangeGuard>;
   config: MmdRendererConfig;
   locale: MmdLocale;
   setLocale: (locale: MmdLocale) => void;
@@ -111,6 +115,7 @@ function reportMmdError(
 
 function MmdProviderRuntime({
   children,
+  changeGuard: guardOverride,
   environment,
   client: clientOverride,
   initialMeta,
@@ -136,7 +141,8 @@ function MmdProviderRuntime({
     [environment, providerConfig],
   );
   const [locale, updateLocale] = useState<MmdLocale>(config.locale);
-  const [meta, setMeta] = useState<RendererMeta>(initialMeta ?? emptyMeta);
+  const ownGuard = useMemo(createChangeGuard, []);
+  const changeGuard = guardOverride ?? ownGuard;
   const [activeRequests, setActiveRequests] = useState(0);
   const reportedErrors = useRef(new WeakSet<Error>());
 
@@ -212,6 +218,12 @@ function MmdProviderRuntime({
     [clientOverride, config.api.paths, request],
   );
 
+  const metadataScope = useMemo(() => ({ initial: initialMeta ?? emptyMeta }), [client, locale, initialMeta]);
+  const scopeRef = useRef(metadataScope);
+  scopeRef.current = metadataScope;
+  const [metaState, setMetaState] = useState({ scope: metadataScope, value: metadataScope.initial });
+  const meta = metaState.scope === metadataScope ? metaState.value : metadataScope.initial;
+
   const fieldRegistry = useMemo(() => {
     const registry = createDefaultFieldRegistry();
     if (fieldRegistryOverride) registry.extend(fieldRegistryOverride);
@@ -233,13 +245,15 @@ function MmdProviderRuntime({
     async (query: MetaQuery) => {
       try {
         const incoming = await client.getMeta(query);
-        setMeta((current) => mergeMeta(current, incoming));
+        if (scopeRef.current === metadataScope) setMetaState(current => ({ scope: metadataScope,
+          value: mergeMeta(current.scope === metadataScope ? current.value : metadataScope.initial, incoming),
+        }));
         return incoming;
       } catch (cause) {
         throw reportError(cause);
       }
     },
-    [client, reportError],
+    [client, reportError, metadataScope],
   );
 
   const navigate = useCallback(
@@ -255,6 +269,7 @@ function MmdProviderRuntime({
 
   const value = useMemo<MmdContextValue>(
     () => ({
+      changeGuard,
       config,
       locale,
       setLocale,
@@ -271,6 +286,7 @@ function MmdProviderRuntime({
       notifySuccess,
     }),
     [
+      changeGuard,
       actionRegistry,
       activeRequests,
       client,

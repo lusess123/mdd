@@ -1,3 +1,4 @@
+import { MmdCancelledError } from "./lifecycle/client-lifecycle";
 "use client";
 
 import { useState } from "react";
@@ -59,7 +60,7 @@ export function ActionButtons({
       const messageKey = feedbackKey(action);
       if (messageKey) notifySuccess(t(messageKey));
     } catch (cause) {
-      reportError(cause);
+      if (!(cause instanceof MmdCancelledError)) reportError(cause);
     } finally {
       setLoadingKey(undefined);
     }

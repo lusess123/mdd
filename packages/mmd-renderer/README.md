@@ -86,3 +86,32 @@ List/detail/edit data queries depend on requested field names, not dictionary or
 metadata identities. Loading related metadata does not reload a parent row or erase an edit draft.
 Use stable client/config objects in the host. Key fields and read-only metadata are excluded
 from save payloads; server-side validation is still required.
+
+## Application extensions
+
+These opt-in APIs compose the existing renderer; they do not embed a host's authentication, model permissions, business audit rules or URL conventions.
+
+- `createUrlQueryState<T>` provides independent URL parameter state with injected parsing and location writes. JSON is the default; scalar tabs can supply `serialize`/`deserialize`. Invalid state returns a fresh `initial()`. The host's `replaceSearch` must preserve unrelated history state and hash. `subscribe` can bridge router/back navigation.
+- `ListContainer` accepts `queryState`, `initialQuery`, `sortOptions`, `defaults`, `keyFirst`, `appearance="plain"`, `mapSearch`, `onFilterChange` and `afterFilters`. Query changes reset selections; filter/sort changes start at page one. Fixed `where` fields are omitted from the filter form. Pagination and row numbers use the last successful response. The query adapter and `mapSearch` should be stable React references.
+- `RelatedRecords` renders only the selected related list, persists its tab through an optional adapter, and supplies a separate `queryKey`, fixed `where` and inherited creation `defaults` to `renderList`. `relatedListContext` shares only matching reference targets, including conditional targets. Parent constraints win over defaults. Tab changes do not query the parent; `revision` explicitly refreshes its reference data. This is relation navigation, not nested transactional writes.
+- `createNavigationTrail` accepts injected location/history access and an `isResource` predicate. It preserves unrelated state, bounds the return stack, and filters destinations through that predicate. Applications retain their own route format and fallback destination.
+- `mapMetadataFields` applies one immutable field mapper to models, views and search containers. `withReadonlyIdentifier` uses the built-in key renderer for display/edit and text for search. Number precision, references and identifiers use the default field registry without host re-registration.
+- `withClientLifecycle` supports typed `before.save/remove/executeAction` hooks and a success-only `afterMutation` callback. Returning `null` cancels before the request with `MmdCancelledError`, which ActionButtons handles without an error toast. A host can perform audit prompts or payload policy in these hooks. `createRecordVersionStore` stores model/id versions under a configurable header; create one per account/session and explicitly capture response versions. Cross-origin APIs must expose that header. Conflict writes are never automatically retried.
+- `createChangeGuard` tracks dirty forms by ID, ignores clean forms and deduplicates pending confirmations. Share the guard through `MmdProvider changeGuard={guard}` and call `guard.request({ confirm, commit })` for locale switches or other destructive context changes. FormContainer registers changes, clears on save and unregisters on unmount. The host supplies confirmation UI and owns locale preference persistence. Provider metadata is scoped to client + locale, so late old-language results cannot pollute the new scope.
+- `ApplicationShell` provides a sticky header, searchable grouped menu and narrow-screen navigation. Pass brand, account, header and footer slots, plus menu items and `onNavigate`; no icon library is required. `unstyled` and named `classes` let existing applications keep their layout CSS. Menu group and item keys cannot collide. It is optional and is not required by `MmdRenderer`.
+
+```tsx
+const queryState = useMemo(() => createUrlQueryState({
+  key: "productsQuery",
+  initial: () => ({ search: {}, sort: [], page: 1, pageSize: 20 }),
+  parse: value => productQuerySchema.parse(value),
+  readSearch: () => location.search,
+  replaceSearch: search => history.replaceState(history.state, "", location.pathname + search + location.hash),
+}), []);
+
+<ListContainer container={container} model={model} queryState={queryState}
+  appearance="plain" keyFirst
+  sortOptions={[{ label: "Name", value: "name", sort: [{ field: "name", direction: "asc" }] }]} />
+```
+
+The query schema and sort field allowlist in this example belong to the host. Backend authorization remains authoritative for all list, relation and mutation requests.

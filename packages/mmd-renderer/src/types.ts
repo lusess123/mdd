@@ -132,6 +132,8 @@ export interface MetaQuery {
 }
 
 export interface MmdListInput {
+  /** 有序排序条件；服务端必须校验字段及方向。 */
+  sort?: Array<{ field: string; direction: "asc" | "desc" }>;
   model: string;
   fields?: string[];
   page?: number;
