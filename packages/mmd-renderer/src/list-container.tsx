@@ -15,6 +15,7 @@ import {
 
 import type { ReactNode } from "react";
 import {
+  createBrowserListQueryState,
   normalizeListSearch,
   type ListQuery,
   type QueryState,
@@ -40,6 +41,10 @@ import type {
 
 export interface ListContainerProps {
   container: RendererDataContainer;
+  /** 开启标准浏览器查询持久化；显式 queryState 优先。 */
+  persistQuery?: boolean;
+  /** 多列表页面可分别指定参数键。 */
+  queryKey?: string;
   /** 宿主提供可选持久化适配器；不绑定浏览器或特定路由器。 */
   queryState?: QueryState<ListQuery>;
   /** 默认查询与排序，未配置时沿用旧分页行为。 */
@@ -102,7 +107,9 @@ export function ListContainer({
   where,
   openView,
   onRowChange,
-  queryState,
+  queryState: queryStateOverride,
+  persistQuery = false,
+  queryKey = "query",
   initialQuery,
   appearance = "card",
   keyFirst = false,
@@ -114,6 +121,18 @@ export function ListContainer({
 }: ListContainerProps) {
   const { client, meta, reportError, t, locale } = useMmd();
   const screens = Grid.useBreakpoint();
+  const queryState = useMemo(
+    () =>
+      queryStateOverride ??
+      (persistQuery
+        ? createBrowserListQueryState({
+            key: queryKey,
+            initial: initialQuery,
+            sortOptions,
+          })
+        : undefined),
+    [queryStateOverride, persistQuery, queryKey, initialQuery, sortOptions],
+  );
   const [query, setQuery] = useState<ListQuery>(
     () =>
       queryState?.read() ?? {
@@ -178,7 +197,11 @@ export function ListContainer({
   }, [container, meta, model, where]);
 
   const selectRecordFields = useMemo(createRecordFieldsSelector, []);
-  const recordFields = selectRecordFields(fields.some(field => field.name === keyField) ? fields : [{ name: keyField }, ...fields]);
+  const recordFields = selectRecordFields(
+    fields.some((field) => field.name === keyField)
+      ? fields
+      : [{ name: keyField }, ...fields],
+  );
 
   const searchFieldKey = JSON.stringify(
     searchFields.map((field) => field.name),

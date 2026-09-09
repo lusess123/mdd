@@ -22,6 +22,7 @@ export interface DetailContainerProps {
   id?: string;
   openView?: (input: OpenViewInput) => void;
   close?: () => void;
+  refresh?: () => void;
 }
 
 export function DetailContainer({
@@ -30,6 +31,7 @@ export function DetailContainer({
   id,
   openView,
   close,
+  refresh,
 }: DetailContainerProps) {
   const { client, meta, reportError, t } = useMmd();
   const [record, setRecord] = useState<MmdRecord>();
@@ -75,7 +77,12 @@ export function DetailContainer({
 
   return (
     <Card
-      title={translateMetadataLabel(t, "models", container.name, container.label)}
+      title={translateMetadataLabel(
+        t,
+        "models",
+        container.name,
+        container.label,
+      )}
       className="mmd-detail-container"
     >
       <Space
@@ -94,7 +101,7 @@ export function DetailContainer({
               client,
               openView,
               close,
-              refresh: load,
+              refresh: refresh ?? load,
             }}
             size="middle"
           />

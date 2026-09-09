@@ -1,11 +1,22 @@
 "use client";
 
-import { useCallback, useId, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useId,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Alert, Card, Form, Skeleton, Space } from "antd";
 
 import { createRecordFieldsSelector } from "./record-fields";
 import { isJsonField, validateJson } from "./json-value";
-import { isReadOnlyField, writableFormValues } from "./form-values";
+import {
+  isReadOnlyField,
+  writableFormValues,
+  initialFormValues,
+} from "./form-values";
 import { ActionButtons } from "./action-buttons";
 import { MmdField } from "./field-renderer";
 import { translateMetadataLabel } from "./i18n";
@@ -23,6 +34,7 @@ export interface FormContainerProps {
   container: RendererDataContainer;
   model?: RendererModel;
   id?: string;
+  defaults?: MmdRecord;
   openView?: (input: OpenViewInput) => void;
   close?: () => void;
   refresh?: () => void | Promise<void>;
@@ -37,6 +49,7 @@ export function FormContainer({
   container,
   model,
   id,
+  defaults,
   openView,
   close,
   refresh,
@@ -44,7 +57,10 @@ export function FormContainer({
 }: FormContainerProps) {
   const { client, meta, reportError, t, locale, changeGuard } = useMmd();
   const formId = useId();
-  useEffect(() => () => changeGuard.setDirty({ id: formId, value: false }), [changeGuard, formId]);
+  useEffect(
+    () => () => changeGuard.setDirty({ id: formId, value: false }),
+    [changeGuard, formId],
+  );
   const [form] = Form.useForm<MmdRecord>();
   const [draft, setDraft] = useState<MmdRecord>({});
   const [loading, setLoading] = useState(Boolean(id));
@@ -61,23 +77,39 @@ export function FormContainer({
   const selectRecordFields = useMemo(createRecordFieldsSelector, []);
   const recordFields = selectRecordFields(fields);
   const currentFields = useRef(fields);
-  useEffect(() => { currentFields.current = fields; }, [fields]);
-
   useEffect(() => {
-    const defaults = Object.fromEntries(
-      currentFields.current
-        .filter((field) => field.defaultValue !== undefined)
-        .map((field) => [field.name, field.defaultValue]),
-    );
+    currentFields.current = fields;
+  }, [fields]);
+
+  const defaultsKey = JSON.stringify(id ? {} : (defaults ?? {}));
+  useEffect(() => {
+    const defaults = initialFormValues({
+      fields: currentFields.current,
+      keyField,
+      defaults: JSON.parse(defaultsKey),
+    });
     changeGuard.setDirty({ id: formId, value: false });
     form.resetFields();
     setError(undefined);
     setDraft(defaults);
     form.setFieldsValue(defaults);
-  }, [container.name, id, recordFields, form, locale, changeGuard, formId]);
+  }, [
+    container.name,
+    id,
+    recordFields,
+    form,
+    locale,
+    changeGuard,
+    formId,
+    defaultsKey,
+    keyField,
+  ]);
 
   useEffect(() => {
-    if (!id) { setLoading(false); return; }
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(undefined);
@@ -118,7 +150,19 @@ export function FormContainer({
     form.setFieldsValue(saved);
     onSaved?.(saved);
     return saved;
-  }, [client, container.name, fields, recordFields, form, id, keyField, onSaved, t, changeGuard, formId]);
+  }, [
+    client,
+    container.name,
+    fields,
+    recordFields,
+    form,
+    id,
+    keyField,
+    onSaved,
+    t,
+    changeGuard,
+    formId,
+  ]);
 
   if (loading) {
     return (
@@ -150,7 +194,10 @@ export function FormContainer({
           className="mmd-edit-form"
           form={form}
           layout="vertical"
-          onValuesChange={(_change, values) => { changeGuard.setDirty({ id: formId, value: true }); setDraft(values); }}
+          onValuesChange={(_change, values) => {
+            changeGuard.setDirty({ id: formId, value: true });
+            setDraft(values);
+          }}
         >
           {fields.map((field) => (
             <Form.Item

@@ -33,3 +33,24 @@ export function writableFormValues({
       .map((field) => [field.name, values[field.name]]),
   );
 }
+
+/** 新建默认值只填入已声明的可写字段；主键和只读字段不会被外部参数覆盖。 */
+export function initialFormValues({
+  fields,
+  keyField,
+  defaults = {},
+}: {
+  fields: RendererField[];
+  keyField: string;
+  defaults?: MmdRecord;
+}): MmdRecord {
+  const declared = Object.fromEntries(
+    fields
+      .filter((field) => field.defaultValue !== undefined)
+      .map((field) => [field.name, field.defaultValue]),
+  );
+  return {
+    ...declared,
+    ...writableFormValues({ values: defaults, fields, keyField }),
+  };
+}

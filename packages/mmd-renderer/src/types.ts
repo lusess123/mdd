@@ -188,6 +188,8 @@ export interface MmdClient {
 }
 
 export interface OpenViewInput {
+  /** 新建表单的初始值；仍受字段可写性约束。 */
+  defaults?: MmdRecord;
   model: string;
   view: string;
   id?: string;

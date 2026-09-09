@@ -76,3 +76,102 @@ export function normalizeListSearch({
     ),
   );
 }
+
+/** 标准列表 URL 编解码：分页校验、排序白名单与独立参数键由组件负责。 */
+export function parseListQuery(
+  value: unknown,
+  initial: Partial<ListQuery> = {},
+): ListQuery {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("Invalid list query");
+  const input = value as Partial<ListQuery>;
+  const result = {
+    search: {},
+    sort: [],
+    page: 1,
+    pageSize: 20,
+    ...initial,
+    ...input,
+  };
+  if (
+    !result.search ||
+    typeof result.search !== "object" ||
+    Array.isArray(result.search) ||
+    !Number.isInteger(result.page) ||
+    result.page < 1 ||
+    !Number.isInteger(result.pageSize) ||
+    result.pageSize < 1 ||
+    result.pageSize > 100 ||
+    !Array.isArray(result.sort) ||
+    result.sort.some(
+      (item) =>
+        !item ||
+        typeof item.field !== "string" ||
+        !["asc", "desc"].includes(item.direction),
+    )
+  )
+    throw new Error("Invalid list query");
+  return result;
+}
+
+/** 仅调用 read/write 时访问浏览器；SSR 导入安全。保留 hash、history.state 和其它参数。 */
+export function createBrowserListQueryState({
+  key = "query",
+  initial = {},
+  sortOptions,
+}: {
+  key?: string;
+  initial?: Partial<ListQuery>;
+  sortOptions?: Array<{ sort: ListQuery["sort"] }>;
+} = {}): QueryState<ListQuery> {
+  return createUrlQueryState({
+    key,
+    initial: () => parseListQuery({}, initial),
+    parse: (value) => {
+      const query = parseListQuery(value, initial);
+      if (
+        sortOptions &&
+        query.sort.length &&
+        !sortOptions.some(
+          (option) =>
+            JSON.stringify(option.sort) === JSON.stringify(query.sort),
+        )
+      )
+        throw new Error("Unsupported sort");
+      return query;
+    },
+    readSearch: () => (typeof location === "undefined" ? "" : location.search),
+    replaceSearch: (search) => {
+      if (typeof history !== "undefined")
+        history.replaceState(
+          history.state,
+          "",
+          `${location.pathname}${search}${location.hash}`,
+        );
+    },
+    subscribe: (listener) => {
+      if (typeof window === "undefined") return () => {};
+      window.addEventListener("popstate", listener);
+      return () => window.removeEventListener("popstate", listener);
+    },
+  });
+}
+
+export function createBrowserTabState(key = "related"): QueryState<string> {
+  return createUrlQueryState({
+    key,
+    initial: () => "",
+    parse: (value) => (typeof value === "string" ? value : ""),
+    serialize: (value) => value,
+    deserialize: (value) => value,
+    readSearch: () => (typeof location === "undefined" ? "" : location.search),
+    replaceSearch: (search) => {
+      if (typeof history !== "undefined")
+        history.replaceState(
+          history.state,
+          "",
+          `${location.pathname}${search}${location.hash}`,
+        );
+    },
+  });
+}

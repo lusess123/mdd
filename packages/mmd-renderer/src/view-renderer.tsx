@@ -5,7 +5,15 @@ import { Alert, Modal, Space, Spin } from "antd";
 
 import { DetailContainer } from "./detail-container";
 import { FormContainer } from "./form-container";
-import { ListContainer } from "./list-container";
+import {
+  RelatedRecords,
+  type RelationResource,
+} from "./relations/related-records";
+import {
+  createBrowserTabState,
+  type QueryState,
+} from "./navigation/query-state";
+import { ListContainer, type ListContainerProps } from "./list-container";
 import { findModel, findView } from "./metadata";
 import { useMmd } from "./provider";
 import type {
@@ -27,6 +35,13 @@ export interface ViewEngineProps {
   model?: RendererModel;
   id?: string;
   where?: MmdRecord;
+  /** 新建初始值，由表单自动裁剪只读与未知字段。 */
+  defaults?: MmdRecord;
+  /** 列表行为集中透传，宿主不必手动加载元数据或直接组装 Container。 */
+  list?: Omit<
+    ListContainerProps,
+    "container" | "model" | "where" | "defaults" | "openView" | "onRowChange"
+  >;
   slots?: MmdPageSlots;
   openView?: (input: OpenViewInput) => void;
   close?: () => void;
@@ -39,6 +54,8 @@ export function ViewEngine({
   model,
   id,
   where,
+  defaults,
+  list,
   slots = {},
   openView,
   close,
@@ -62,6 +79,8 @@ export function ViewEngine({
           case "list":
             content = (
               <ListContainer
+                {...list}
+                defaults={defaults}
                 container={container}
                 model={model}
                 where={where}
@@ -78,6 +97,7 @@ export function ViewEngine({
                 id={id}
                 openView={openView}
                 close={close}
+                refresh={refresh}
               />
             );
             break;
@@ -85,6 +105,7 @@ export function ViewEngine({
           case "tableForm":
             content = (
               <FormContainer
+                defaults={defaults}
                 container={container}
                 model={model}
                 id={id}
@@ -104,7 +125,10 @@ export function ViewEngine({
             );
         }
         return (
-          <div className={`mmd-container mmd-container-${container.type}`} key={key}>
+          <div
+            className={`mmd-container mmd-container-${container.type}`}
+            key={key}
+          >
             {renderSlot(slots.beforeContainer, slotProps)}
             {content}
             {renderSlot(slots.afterContainer, slotProps)}
@@ -117,31 +141,69 @@ export function ViewEngine({
 }
 
 export interface MmdViewProps {
+  /** 路由由宿主决定；省略时使用内置弹窗。 */
+  onOpenView?: (input: OpenViewInput) => void;
+  /** 可选关联数据；标签、子表渲染、查询隔离与刷新由 MMD 接管。 */
+  relations?: {
+    resource: RelationResource;
+    resources: readonly RelationResource[];
+    tabState?: QueryState<string>;
+    className?: string;
+    onOpenList?: Parameters<typeof RelatedRecords>[0]["onOpenList"];
+  };
   view: string | RendererView;
   model?: string | RendererModel;
   id?: string;
   where?: MmdRecord;
+  /** 新建初始值，由表单自动裁剪只读与未知字段。 */
+  defaults?: MmdRecord;
+  /** 列表行为集中透传，宿主不必手动加载元数据或直接组装 Container。 */
+  list?: Omit<
+    ListContainerProps,
+    "container" | "model" | "where" | "defaults" | "openView" | "onRowChange"
+  >;
   slots?: MmdPageSlots;
   onClose?: () => void;
   onRefresh?: () => void;
   onRowChange?: (row: MmdRecord) => void;
 }
 
-export function MmdView({
+export function MmdView(props: MmdViewProps) {
+  const { locale } = useMmd();
+  const model =
+    typeof props.model === "string" ? props.model : props.model?.name;
+  const view = typeof props.view === "string" ? props.view : props.view.name;
+  return (
+    <MmdViewInstance
+      key={JSON.stringify([model, view, props.id, locale])}
+      {...props}
+    />
+  );
+}
+
+function MmdViewInstance({
   view: viewInput,
   model: modelInput,
   id,
   where,
+  defaults,
+  list,
   slots = {},
   onClose,
   onRefresh,
   onRowChange,
+  onOpenView,
+  relations,
 }: MmdViewProps) {
   const { loadMeta, meta, reportError, t } = useMmd();
   const [loading, setLoading] = useState(typeof viewInput === "string");
   const [error, setError] = useState<Error>();
   const [modal, setModal] = useState<OpenViewInput>();
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const tabState = useMemo(
+    () => relations?.tabState ?? createBrowserTabState(),
+    [relations?.tabState],
+  );
   const modelName =
     typeof modelInput === "string" ? modelInput : modelInput?.name;
   const model =
@@ -156,7 +218,9 @@ export function MmdView({
       : findView(meta, viewInput, modelName);
   const qualifiedView =
     typeof viewInput === "string" && modelName
-      ? `${modelName}.${viewInput}`
+      ? viewInput.startsWith(`${modelName}.`)
+        ? viewInput
+        : `${modelName}.${viewInput}`
       : String(viewInput);
 
   useEffect(() => {
@@ -225,13 +289,39 @@ export function MmdView({
           model={model}
           id={id}
           where={where}
+          defaults={defaults}
+          list={list}
           slots={slots}
-          openView={setModal}
+          openView={onOpenView ?? setModal}
           close={onClose}
           refresh={refresh}
           onRowChange={onRowChange}
         />
       </div>
+      {view.dataContainers.some((container) => container.type === "detail") &&
+      id &&
+      relations?.resource.children.length ? (
+        <section className={relations.className}>
+          <RelatedRecords
+            resource={relations.resource}
+            resources={relations.resources}
+            id={id}
+            revision={refreshVersion}
+            tabState={tabState}
+            onOpenList={relations.onOpenList}
+            renderList={({ model, where, defaults, queryKey }) => (
+              <MmdView
+                model={model}
+                view="listview"
+                where={where}
+                defaults={defaults}
+                list={{ ...list, queryKey }}
+                onOpenView={onOpenView}
+              />
+            )}
+          />
+        </section>
+      ) : null}
       <Modal
         rootClassName="mmd-modal-root"
         open={Boolean(modal)}
@@ -246,6 +336,8 @@ export function MmdView({
             model={modal.model}
             view={modal.view}
             id={modal.id}
+            defaults={modal.defaults}
+            list={list}
             onClose={() => setModal(undefined)}
             onRefresh={refresh}
           />

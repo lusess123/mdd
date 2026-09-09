@@ -116,3 +116,22 @@ const queryState = useMemo(() => createUrlQueryState({
 The query schema and sort field allowlist in this example belong to the host. Backend authorization remains authoritative for all list, relation and mutation requests.
 
 Application shells, site navigation menus, branding, login and account state belong to the host application. MMD provides the metadata-driven CRUD components and their supporting protocols; it does not export an application layout.
+
+### Direct CRUD entry
+
+Use the public entry for lists, detail, edit and create views. It loads metadata, chooses the container, handles errors and forwards list configuration without requiring host wrappers:
+
+```tsx
+<MmdRenderer
+  model="orders"
+  view="listview"
+  list={{ persistQuery: true, appearance: "plain", keyFirst: true }}
+  onOpenView={({ model, view, id, defaults }) => router.open({ model, view, id, defaults })}
+/>
+```
+
+`defaults` initializes declared writable fields on create forms. New-record actions carry relationship defaults through `onOpenView` or the built-in modal. They never turn a parent's primary key into the new record ID. The server must still authorize and validate writes.
+
+For detail pages, pass `relations={{ resource, resources }}` to render related tabs and their standard MmdRenderer lists automatically. `relations.onOpenList` connects full-list navigation and `relations.className` styles the related section. With list persistence enabled, child tabs use separate `relatedQuery.<model>.<field>` keys and the selected tab uses `related`; a custom `tabState` is optional. Switching tabs does not refresh the parent, while a successful detail action refreshes both the record and its relation context. Shell, headings and business navigation remain host-owned.
+
+`list.queryState` remains available for a custom router or storage; it overrides `persistQuery`. Browser defaults preserve history state, other query keys and hash. Query parsing enforces valid pagination and configured sort choices, and retains false, numeric/string enums and exact decimal strings. `createHttpMmdClient` serializes `where` as canonical Engine `filters`; custom `MmdClient` implementations continue to receive `where` directly.

@@ -2,7 +2,7 @@
 
 import { MmdCancelledError } from "./lifecycle/client-lifecycle";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, Popconfirm, Space } from "antd";
 
 import { isActionDisabled, isActionVisible } from "./action-policy";
@@ -21,7 +21,9 @@ export interface ActionButtonsProps {
 }
 
 function actionKey(action: RendererAction, index: number): string {
-  return action.extend ?? action.name ?? action.type ?? `${action.label}-${index}`;
+  return (
+    action.extend ?? action.name ?? action.type ?? `${action.label}-${index}`
+  );
 }
 
 function actionLabel(
@@ -50,19 +52,28 @@ export function ActionButtons({
   size = "small",
 }: ActionButtonsProps) {
   const { actionRegistry, notifySuccess, reportError, t } = useMmd();
+  const pending = useRef(false);
   const [loadingKey, setLoadingKey] = useState<string>();
   const actionRecord = record ?? context.record;
-  const visibleActions = actions.filter((action) => isActionVisible(action, actionRecord));
+  const visibleActions = actions.filter((action) =>
+    isActionVisible(action, actionRecord),
+  );
 
   const run = async (action: RendererAction, key: string) => {
+    if (pending.current) return;
+    pending.current = true;
     setLoadingKey(key);
     try {
-      await actionRegistry.execute(action, { ...context, record: actionRecord });
+      await actionRegistry.execute(action, {
+        ...context,
+        record: actionRecord,
+      });
       const messageKey = feedbackKey(action);
       if (messageKey) notifySuccess(t(messageKey));
     } catch (cause) {
       if (!(cause instanceof MmdCancelledError)) reportError(cause);
     } finally {
+      pending.current = false;
       setLoadingKey(undefined);
     }
   };
@@ -79,8 +90,14 @@ export function ActionButtons({
           <Button
             size={size}
             type={action.tone === "primary" ? "primary" : "default"}
-            danger={action.tone === "danger" || action.type === "del" || action.type === "delete"}
-            disabled={disabled}
+            danger={
+              action.tone === "danger" ||
+              action.type === "del" ||
+              action.type === "delete"
+            }
+            disabled={
+              disabled || (loadingKey !== undefined && loadingKey !== key)
+            }
             loading={loadingKey === key}
             onClick={action.confirm ? undefined : () => void run(action, key)}
           >
@@ -90,7 +107,9 @@ export function ActionButtons({
         return action.confirm ? (
           <Popconfirm
             key={key}
-            title={typeof action.confirm === "string" ? action.confirm : `${label}?`}
+            title={
+              typeof action.confirm === "string" ? action.confirm : `${label}?`
+            }
             okText={t("common.confirm")}
             cancelText={t("common.cancel")}
             onConfirm={() => run(action, key)}
