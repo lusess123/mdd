@@ -21,3 +21,5 @@ Use `{ name: "config", type: "json", required: true }` to render a JSON editor w
 Set `showRowNumber: true` on a list container to prepend a `No.` / `序号` column. The default is `false`. Rows, numbers, and Table pagination use the same successful response snapshot, including while another page is loading or fails. Changing the page size requests page 1; a failed request can be retried with the same page size.
 
 Custom Ant Design tables can use `createRowNumberColumn({ page, pageSize, title })`. Pass the page and size belonging to the currently displayed rows to both this helper and Table pagination; pending pagination values can make Table slice the old rows again. This column has no `dataIndex` and must not be added to model fields or API query fields.
+
+详情记录请求只依赖模型、记录 ID 和查询字段名称/顺序。加载其它模型元数据、切换关联选项卡、更新字典或字段标签不会再次请求主记录；展示文案和选项仍随元数据更新。新增/删除查询字段、切换记录或显式刷新时继续请求。该行为内置于 DetailContainer，接入方无需通过隔离 Provider 避免无关重载。

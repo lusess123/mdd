@@ -8,6 +8,7 @@ import { MmdField } from "./field-renderer";
 import { translateMetadataLabel } from "./i18n";
 import { resolveContainerFields, resolveFieldOptions } from "./metadata";
 import { useMmd } from "./provider";
+import { createRecordFieldsSelector } from "./record-fields";
 import type {
   MmdRecord,
   OpenViewInput,
@@ -43,6 +44,9 @@ export function DetailContainer({
     [container, meta, model],
   );
 
+  const selectRecordFields = useMemo(createRecordFieldsSelector, []);
+  const recordFields = selectRecordFields(fields);
+
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -51,7 +55,7 @@ export function DetailContainer({
       const nextRecord = await client.get({
         model: container.name,
         id,
-        fields: fields.map((field) => field.name),
+        fields: recordFields,
       });
       setRecord(nextRecord ?? undefined);
     } catch (cause) {
@@ -59,7 +63,7 @@ export function DetailContainer({
     } finally {
       setLoading(false);
     }
-  }, [client, container.name, fields, id, reportError]);
+  }, [client, container.name, recordFields, id, reportError]);
 
   useEffect(() => {
     void load();
