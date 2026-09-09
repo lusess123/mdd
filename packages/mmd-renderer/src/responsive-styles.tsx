@@ -89,7 +89,7 @@ export const MMD_RESPONSIVE_STYLES = `
 .mmd-filter-inline { display: contents; }
 .mmd-reference-option { display: flex; justify-content: space-between; gap: 8px; }
 .mmd-reference-pagination { padding: 8px; }
-@container mmd-renderer (max-width: 1100px) {
+@container mmd-renderer (max-width: 900px) {
   .mmd-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container mmd-renderer (max-width: 680px) {
