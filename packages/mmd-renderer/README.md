@@ -135,3 +135,22 @@ Use the public entry for lists, detail, edit and create views. It loads metadata
 For detail pages, pass `relations={{ resource, resources }}` to render related tabs and their standard MmdRenderer lists automatically. `relations.onOpenList` connects full-list navigation and `relations.className` styles the related section. With list persistence enabled, child tabs use separate `relatedQuery.<model>.<field>` keys and the selected tab uses `related`; a custom `tabState` is optional. Switching tabs does not refresh the parent, while a successful detail action refreshes both the record and its relation context. Shell, headings and business navigation remain host-owned.
 
 `list.queryState` remains available for a custom router or storage; it overrides `persistQuery`. Browser defaults preserve history state, other query keys and hash. Query parsing enforces valid pagination and configured sort choices, and retains false, numeric/string enums and exact decimal strings. `createHttpMmdClient` serializes `where` as canonical Engine `filters`; custom `MmdClient` implementations continue to receive `where` directly.
+
+### 标准资源页
+
+`MmdResourcePage` 在 `MmdRenderer` 的 CRUD 能力上提供单个资源的标题、可写能力标签、关联筛选提示及关联列表。使用相同的 Provider；中文/英文及消息覆盖沿用 Provider 配置。`resource` 提供名称、说明、能力和关系，`resources` 提供可见关联资源；能力标签不代替服务端鉴权。
+
+```tsx
+<MmdResourcePage
+  resource={resource}
+  resources={resources}
+  view="listview"
+  where={relationFilter}
+  defaults={createDefaults}
+  list={{ persistQuery: true, keyFirst: true }}
+  onOpenView={({ model, view, id, where, defaults }) => router.open({ model, view, id, where, defaults })}
+  onClose={() => router.back()}
+/>
+```
+
+`onOpenView` 的关联列表请求携带固定 `where` 与新建 `defaults`；清除关联筛选时重新打开无约束列表。省略路由回调时普通 CRUD 沿用内置弹窗，资源页不显示无法执行的返回/清除按钮。可通过 `mmd-resource-heading`、`mmd-resource-eyebrow`、`mmd-resource-capabilities`、`mmd-resource-surface`、`mmd-resource-filter-notice`、`mmd-resource-relations` 类名适配品牌样式。Shell、菜单、账号及应用路由仍由宿主实现。

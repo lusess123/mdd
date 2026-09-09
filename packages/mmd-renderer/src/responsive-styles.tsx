@@ -1,4 +1,10 @@
 export const MMD_RESPONSIVE_STYLES = `
+:where(.mmd-resource-heading) { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
+:where(.mmd-resource-heading h1 small) { margin-left:12px; font-size:14px; color:var(--ant-color-text-secondary, #666); }
+:where(.mmd-resource-eyebrow) { display:block; color:var(--ant-color-text-secondary, #666); }
+:where(.mmd-resource-filter-notice, .mmd-resource-capabilities) { margin-bottom:12px; }
+:where(.mmd-resource-relations) { margin-top:24px; }
+
 .mmd-relation-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
 .mmd-list-plain { container: mmd-renderer / inline-size; }
 .mmd-list-toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; align-items:center; }

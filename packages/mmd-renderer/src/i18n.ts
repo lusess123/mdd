@@ -11,6 +11,19 @@ export function detectMmdLocale(
 }
 
 const zhCN: MmdMessages = {
+  "resource.management": "数据管理",
+  "resource.new": "新增",
+  "resource.edit": "编辑",
+  "resource.detail": "详情",
+  "resource.create": "可新增",
+  "resource.delete": "可删除",
+  "resource.readOnly": "只读查询",
+  "resource.references": "{count} 个关联字段",
+  "resource.children": "{count} 类关联数据",
+  "resource.back": "返回来源",
+  "resource.filtered": "已按关联条件筛选",
+  "resource.clearFilter": "清除关联筛选",
+
   "common.loading": "加载中…",
   "common.yes": "是",
   "common.no": "否",
@@ -58,6 +71,19 @@ const zhCN: MmdMessages = {
 };
 
 const enUS: MmdMessages = {
+  "resource.management": "Data management",
+  "resource.new": "New",
+  "resource.edit": "Edit",
+  "resource.detail": "Details",
+  "resource.create": "Create",
+  "resource.delete": "Delete",
+  "resource.readOnly": "Read only",
+  "resource.references": "{count} reference fields",
+  "resource.children": "{count} related resources",
+  "resource.back": "Back to source",
+  "resource.filtered": "Filtered by related record",
+  "resource.clearFilter": "Clear relation filter",
+
   "common.loading": "Loading…",
   "common.yes": "Yes",
   "common.no": "No",

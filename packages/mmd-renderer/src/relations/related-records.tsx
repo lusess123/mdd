@@ -12,6 +12,8 @@ export interface RelationResource {
   /** 该模型可见的外键和条件目标。 */
   references: Array<{
     field: string;
+    /** 已翻译的关联字段名称，省略时显示字段名。 */
+    label?: string;
     target: string;
     when?: FieldReference["when"];
   }>;
