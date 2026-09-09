@@ -31,9 +31,10 @@ function TextDisplay({ value }: FieldRendererProps) {
   return <Typography.Text>{textValue(value)}</Typography.Text>;
 }
 
-function TextEdit({ value, disabled, onChange }: FieldRendererProps<string>) {
+function TextEdit({ value, field, disabled, onChange }: FieldRendererProps<string>) {
   return (
     <Input
+      aria-label={field.label ?? field.name}
       value={value ?? ""}
       disabled={disabled}
       onChange={(event) => onChange?.(event.target.value)}
@@ -43,11 +44,13 @@ function TextEdit({ value, disabled, onChange }: FieldRendererProps<string>) {
 
 function TextAreaEdit({
   value,
+  field,
   disabled,
   onChange,
 }: FieldRendererProps<string>) {
   return (
     <Input.TextArea
+      aria-label={field.label ?? field.name}
       value={value ?? ""}
       disabled={disabled}
       autoSize={{ minRows: 3, maxRows: 10 }}
