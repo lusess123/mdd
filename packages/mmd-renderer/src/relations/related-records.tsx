@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Alert, Button, Tabs } from "antd";
 import { useMmd } from "../provider";
+import type { FieldReference } from "mmd-contracts";
 import type { MmdRecord } from "../types";
 import type { QueryState } from "../navigation/query-state";
 
@@ -12,7 +13,7 @@ export interface RelationResource {
   references: Array<{
     field: string;
     target: string;
-    when?: { field: string; value: string } | undefined;
+    when?: FieldReference["when"];
   }>;
   /** 服务端明确开放的子表。 */
   children: Array<{
