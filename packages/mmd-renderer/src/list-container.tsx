@@ -178,7 +178,7 @@ export function ListContainer({
   }, [container, meta, model, where]);
 
   const selectRecordFields = useMemo(createRecordFieldsSelector, []);
-  const recordFields = selectRecordFields(fields);
+  const recordFields = selectRecordFields(fields.some(field => field.name === keyField) ? fields : [{ name: keyField }, ...fields]);
 
   const searchFieldKey = JSON.stringify(
     searchFields.map((field) => field.name),

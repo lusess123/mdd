@@ -19,3 +19,13 @@ test("adding, removing or reordering requested fields invalidates the query", ()
   expect(select([{ name: "id" }])).not.toBe(reordered);
   expect(initial).toEqual(["id"]);
 });
+
+
+test("conditional relation discriminator is queried even when hidden from display", () => {
+  const select = createRecordFieldsSelector();
+  const fields = [{ name: "owner", references: [{ target: "users", when: { field: "kind", value: "user" } }] }];
+  const first = select(fields);
+  expect(first).toEqual(["owner", "kind"]);
+  expect(select([{ ...fields[0]!, label: "Translated" }])).toBe(first);
+  expect(select([{ name: "owner", references: [{ target: "teams", when: { field: "type", value: "team" } }] }])).toEqual(["owner", "type"]);
+});

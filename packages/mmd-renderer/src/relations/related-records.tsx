@@ -12,14 +12,14 @@ export interface RelationResource {
   references: Array<{
     field: string;
     target: string;
-    when?: { field: string; value: string };
+    when?: { field: string; value: string } | undefined;
   }>;
   /** 服务端明确开放的子表。 */
   children: Array<{
     model: string;
     field: string;
     label: string;
-    filter?: MmdRecord;
+    filter?: MmdRecord | undefined;
   }>;
 }
 export interface RelatedListContext {

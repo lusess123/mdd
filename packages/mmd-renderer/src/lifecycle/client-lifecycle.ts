@@ -24,7 +24,7 @@ export function withClientLifecycle({
 }: {
   client: MmdClient;
   before?: BeforeHooks;
-  afterMutation?: (event: { operation: Mutation; model: string }) => void;
+  afterMutation?: (event: { operation: Mutation; model: string }) => void | Promise<void>;
 }): MmdClient {
   return {
     ...client,
@@ -32,14 +32,14 @@ export function withClientLifecycle({
       const next = before.save ? await before.save(input) : input;
       if (next === null) throw new MmdCancelledError();
       const result = await client.save(next);
-      afterMutation?.({ operation: "save", model: next.model });
+      await afterMutation?.({ operation: "save", model: next.model });
       return result;
     },
     async remove(input) {
       const next = before.remove ? await before.remove(input) : input;
       if (next === null) throw new MmdCancelledError();
       const result = await client.remove(next);
-      afterMutation?.({ operation: "remove", model: next.model });
+      await afterMutation?.({ operation: "remove", model: next.model });
       return result;
     },
     async executeAction(input) {
@@ -48,7 +48,7 @@ export function withClientLifecycle({
         : input;
       if (next === null) throw new MmdCancelledError();
       const result = await client.executeAction(next);
-      afterMutation?.({ operation: "executeAction", model: next.model });
+      await afterMutation?.({ operation: "executeAction", model: next.model });
       return result;
     },
   };
