@@ -321,8 +321,17 @@ export class MmdEngine {
     value: unknown
   ): FilterExpression | undefined {
     if (!isPresent(value) || (Array.isArray(value) && value.length === 0)) return undefined;
+    if (field.filter === false) throw new MmdError("INVALID_FILTER", `Search is disabled for field ${field.name}`);
+    const kind = field.filter?.kind;
+    if (kind === "id" || kind === "reference" || kind === "boolean")
+      return { field: field.name, operator: "eq", value };
+    if (kind === "enum")
+      return { field: field.name, operator: Array.isArray(value) ? "in" : "eq", value };
+    if (kind === "text") return { field: field.name, operator: "contains", value };
     const type = resolveFieldType(field);
-    if (type === ModelFieldType.DateTime && Array.isArray(value)) {
+    if ((kind === "number" || kind === "datetime") && (!Array.isArray(value) || value.length !== 2))
+      throw new MmdError("INVALID_FILTER", `Expected a two-ended range for field ${field.name}`);
+    if ((kind === "number" || kind === "datetime" || type === ModelFieldType.DateTime) && Array.isArray(value)) {
       const range: FilterExpression[] = [];
       if (isPresent(value[0])) range.push({ field: field.name, operator: "gte", value: value[0] });
       if (isPresent(value[1])) range.push({ field: field.name, operator: "lte", value: value[1] });

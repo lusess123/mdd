@@ -54,3 +54,18 @@ test("explicit Key visibility still respects pageStyle and custom renderers", ()
   expect(explicit.detail[0].renderer).toBe("custom-id");
   expect(explicit.edit.map((field) => field.name)).not.toContain("id");
 });
+
+test("显式筛选扩展到主键数值外键并尊重禁用与 Search 页面限制", () => {
+  const model = { name: "Filters", fields: [
+    { name: "id", fieldType: ModelFieldType.Key, filter: { kind: "id" as const } },
+    { name: "price", fieldType: ModelFieldType.Number, filter: { kind: "number" as const, decimal: true } },
+    { name: "owner", fieldType: ModelFieldType.ToOne, filter: { kind: "reference" as const } },
+    { name: "hidden", fieldType: ModelFieldType.Text, filter: false as const },
+    { name: "detail", fieldType: ModelFieldType.Text, filter: { kind: "text" as const }, pageStyle: [PageStyle.Detail] },
+  ] };
+  const container = modelToListView(model).dataContainers[0];
+  if (!container || !("search" in container)) throw new Error("List search missing");
+  const search = container.search as import("mmd-contracts").SearchConfig;
+  expect(search.fields.map((field) => field.name)).toEqual(["id", "price", "owner"]);
+  expect(search.fields[1]?.filter).toEqual({ kind: "number", decimal: true });
+});

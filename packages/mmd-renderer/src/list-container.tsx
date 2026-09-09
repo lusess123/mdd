@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
-  Button,
   Card,
-  Form,
   Space,
   Table,
   type TableColumnsType,
   type TablePaginationConfig,
 } from "antd";
 
+import { FilterForm } from "./filter-form";
+import { createRecordFieldsSelector } from "./record-fields";
 import { ActionButtons } from "./action-buttons";
 import { MmdField } from "./field-renderer";
 import { translateMetadataLabel } from "./i18n";
@@ -100,6 +100,9 @@ export function ListContainer({
     ).map((field) => resolveFieldOptions(field, meta));
   }, [container, meta, model]);
 
+  const selectRecordFields = useMemo(createRecordFieldsSelector, []);
+  const recordFields = selectRecordFields(fields);
+
   const load = useCallback(async () => {
     const version = ++requestVersion.current;
     setLoading(true);
@@ -107,7 +110,7 @@ export function ListContainer({
     try {
       const result = await client.list({
         model: container.name,
-        fields: fields.map((field) => field.name),
+        fields: recordFields,
         page: paginationRequest.page,
         pageSize: paginationRequest.pageSize,
         where,
@@ -119,7 +122,7 @@ export function ListContainer({
     } finally {
       if (version === requestVersion.current) setLoading(false);
     }
-  }, [client, container.name, fields, paginationRequest, reportError, search, where]);
+  }, [client, container.name, recordFields, paginationRequest, reportError, search, where]);
 
   useEffect(() => {
     void load();
@@ -208,40 +211,12 @@ export function ListContainer({
         style={{ display: "flex" }}
       >
         {searchFields.length > 0 ? (
-          <Form
-            className="mmd-search-form"
-            layout="inline"
-            onFinish={(values) => {
+          <FilterForm fields={searchFields} value={search} layout={container.search?.layout ?? "inline"}
+            onSearch={(values) => {
               setPaginationRequest((previous) => ({ ...previous, page: 1 }));
-              setSearch(values as MmdRecord);
-            }}
-          >
-            {searchFields.map((field) => (
-              <Form.Item
-                key={field.name}
-                name={field.name}
-                label={translateMetadataLabel(t, "fields", field.name, field.label)}
-              >
-                <MmdField field={field} scene="search" value={undefined} />
-              </Form.Item>
-            ))}
-            <Form.Item>
-              <Space className="mmd-search-actions">
-                <Button htmlType="submit" type="primary">
-                  {t("common.search")}
-                </Button>
-                <Button
-                  htmlType="reset"
-                  onClick={() => {
-                    setPaginationRequest((previous) => ({ ...previous, page: 1 }));
-                    setSearch({});
-                  }}
-                >
-                  {t("common.reset")}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
+              setSearch(values);
+              setSelectedIds([]);
+            }} />
         ) : null}
         {pageActions.length > 0 ? (
           <div className="mmd-page-actions">

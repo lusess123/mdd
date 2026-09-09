@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Card, Form, Skeleton, Space } from "antd";
 
+import { createRecordFieldsSelector } from "./record-fields";
 import { isJsonField, validateJson } from "./json-value";
 import { isReadOnlyField, writableFormValues } from "./form-values";
 import { ActionButtons } from "./action-buttons";
@@ -55,18 +56,25 @@ export function FormContainer({
     [container, meta, model],
   );
 
+  const selectRecordFields = useMemo(createRecordFieldsSelector, []);
+  const recordFields = selectRecordFields(fields);
+  const currentFields = useRef(fields);
+  useEffect(() => { currentFields.current = fields; }, [fields]);
+
   useEffect(() => {
     const defaults = Object.fromEntries(
-      fields
+      currentFields.current
         .filter((field) => field.defaultValue !== undefined)
         .map((field) => [field.name, field.defaultValue]),
     );
+    form.resetFields();
+    setError(undefined);
     setDraft(defaults);
     form.setFieldsValue(defaults);
-  }, [fields, form]);
+  }, [container.name, id, recordFields, form]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) { setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
     setError(undefined);
@@ -74,7 +82,7 @@ export function FormContainer({
       .get({
         model: container.name,
         id,
-        fields: fields.map((field) => field.name),
+        fields: recordFields,
       })
       .then((record) => {
         if (cancelled || !record) return;
@@ -90,7 +98,7 @@ export function FormContainer({
     return () => {
       cancelled = true;
     };
-  }, [client, container.name, fields, form, id, reportError]);
+  }, [client, container.name, recordFields, form, id, reportError]);
 
   const submit = useCallback(async () => {
     const values = await form.validateFields().catch(() => {
@@ -100,13 +108,13 @@ export function FormContainer({
       model: container.name,
       id,
       row: writableFormValues({ values, fields, keyField }),
-      fields: fields.map((field) => field.name),
+      fields: recordFields,
     });
     setDraft(saved);
     form.setFieldsValue(saved);
     onSaved?.(saved);
     return saved;
-  }, [client, container.name, fields, form, id, keyField, onSaved, t]);
+  }, [client, container.name, fields, recordFields, form, id, keyField, onSaved, t]);
 
   if (loading) {
     return (
@@ -181,6 +189,7 @@ export function FormContainer({
               <MmdField
                 field={field}
                 scene="form"
+                record={draft}
                 value={undefined}
                 disabled={isReadOnlyField(field, keyField)}
               />

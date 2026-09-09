@@ -38,6 +38,8 @@ export enum RenderType {
 export { RenderType as IRenderType };
 
 export interface ViewField {
+  /** 可覆盖模型字段的筛选配置。 */
+  filter?: import("./filter").FieldFilter | false;
   name: string;
   label?: string;
   dictName?: string;
@@ -51,6 +53,8 @@ export interface ViewField {
 }
 
 export interface SearchConfig {
+  /** compact 使用响应式网格与更多筛选，默认 inline。 */
+  layout?: "inline" | "compact";
   fields: ViewField[];
 }
 

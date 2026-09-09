@@ -307,3 +307,24 @@ describe("MmdEngine", () => {
     expect(result.pageSize).toBe(20);
   });
 });
+
+test("显式筛选语义覆盖字段显示类型且不丢失精度与假值", async () => {
+  const adapter = new MemoryAdapter([]);
+  const registry = new MmdRegistry().registerModel({ name: "Fields", fields: [
+    { name: "id", fieldType: ModelFieldType.Key, filter: { kind: "id" } },
+    { name: "state", fieldType: ModelFieldType.Text, filter: { kind: "enum", allowCustom: true } },
+    { name: "amount", fieldType: ModelFieldType.Text, filter: { kind: "number", decimal: true } },
+    { name: "enabled", fieldType: ModelFieldType.Boolean, filter: { kind: "boolean" } },
+    { name: "secret", fieldType: ModelFieldType.Text, filter: false },
+  ] });
+  const engine = new MmdEngine({ registry, adapter });
+  await engine.queryList({ model: "Fields", search: { id: "ABC", state: ["old", "new"], amount: ["9007199254740993.01", null], enabled: false } });
+  expect(adapter.lastListInput?.filter).toEqual({ and: [
+    { field: "id", operator: "eq", value: "ABC" },
+    { field: "state", operator: "in", value: ["old", "new"] },
+    { field: "amount", operator: "gte", value: "9007199254740993.01" },
+    { field: "enabled", operator: "eq", value: false },
+  ] });
+  await expect(engine.queryList({ model: "Fields", search: { amount: [1, 2, 3] } })).rejects.toThrow("range");
+  await expect(engine.queryList({ model: "Fields", search: { secret: "x" } })).rejects.toThrow("disabled");
+});

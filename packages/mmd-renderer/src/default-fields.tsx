@@ -9,6 +9,10 @@ import {
   Typography,
 } from "antd";
 
+import { EnumSelect } from "./enum-select";
+import { FilterField } from "./filter-field";
+import { ReferenceField } from "./reference-field";
+import { formatDecimalValue } from "./decimal-value";
 import { localDateTime, dateTimeInstant } from "./datetime-value";
 import { JsonField } from "./json-field";
 import { ReadonlyIdentifier } from "./readonly-identifier";
@@ -52,13 +56,18 @@ function TextAreaEdit({
   );
 }
 
-function NumberEdit({ value, disabled, onChange }: FieldRendererProps<number>) {
+function DecimalDisplay({ value }: FieldRendererProps) {
+  const { locale } = useMmd();
+  return <Typography.Text>{formatDecimalValue({ value, locale })}</Typography.Text>;
+}
+function NumberEdit({ value, field, disabled, onChange }: FieldRendererProps<number | string | null>) {
   return (
     <InputNumber
       value={value}
+      stringMode={field.decimal}
       disabled={disabled}
       style={{ width: "100%" }}
-      onChange={(nextValue) => onChange?.(nextValue ?? 0)}
+      onChange={(nextValue) => onChange?.(nextValue)}
     />
   );
 }
@@ -120,24 +129,7 @@ function SingleDisplay({ field, value }: FieldRendererProps) {
   );
 }
 
-function SingleEdit({ field, value, disabled, onChange }: FieldRendererProps) {
-  const { t } = useMmd();
-  const options = (field.options ?? []).map((option) => {
-    const key = `options.${field.name}.${String(option.value)}`;
-    const translated = t(key);
-    return { ...option, label: translated === key ? option.label : translated };
-  });
-  return (
-    <Select
-      allowClear
-      value={value}
-      disabled={disabled}
-      options={options}
-      style={{ width: "100%" }}
-      onChange={(nextValue) => onChange?.(nextValue)}
-    />
-  );
-}
+function SingleEdit(props: FieldRendererProps) { return <EnumSelect {...props} />; }
 
 function MultiDisplay({ field, value }: FieldRendererProps<unknown[]>) {
   const { t } = useMmd();
@@ -160,24 +152,7 @@ function MultiDisplay({ field, value }: FieldRendererProps<unknown[]>) {
   );
 }
 
-function MultiEdit({ field, value, disabled, onChange }: FieldRendererProps) {
-  const { t } = useMmd();
-  const options = (field.options ?? []).map((option) => {
-    const key = `options.${field.name}.${String(option.value)}`;
-    const translated = t(key);
-    return { ...option, label: translated === key ? option.label : translated };
-  });
-  return (
-    <Select
-      mode="tags"
-      value={Array.isArray(value) ? value : []}
-      disabled={disabled}
-      options={options}
-      style={{ width: "100%" }}
-      onChange={(nextValue) => onChange?.(nextValue)}
-    />
-  );
-}
+function MultiEdit(props: FieldRendererProps) { return <EnumSelect {...props} multiple />; }
 
 function DateTimeDisplay({ value }: FieldRendererProps) {
   const { locale } = useMmd();
@@ -200,6 +175,7 @@ function DateTimeEdit({
   return (
     <Input
       type="datetime-local"
+      step="0.001"
       value={normalized}
       disabled={disabled}
       onChange={(event) => onChange?.(dateTimeInstant(event.target.value))}
@@ -227,12 +203,12 @@ const textarea = {
   form: TextAreaEdit,
   search: TextEdit,
 };
-const number = { default: TextDisplay, form: NumberEdit, search: NumberEdit };
+const number = { default: DecimalDisplay, form: NumberEdit, search: FilterField };
 const money = { default: MoneyDisplay, form: NumberEdit, search: NumberEdit };
 const boolean = {
   default: BooleanDisplay,
   form: BooleanEdit,
-  search: BooleanEdit,
+  search: FilterField,
 };
 const single = {
   default: SingleDisplay,
@@ -247,7 +223,7 @@ const multi = {
 const datetime = {
   default: DateTimeDisplay,
   form: DateTimeEdit,
-  search: DateTimeEdit,
+  search: FilterField,
 };
 
 export function createDefaultFieldRegistry(): FieldRegistry {
@@ -276,19 +252,19 @@ export function createDefaultFieldRegistry(): FieldRegistry {
     "datatime",
     "datetimedetail",
     "datatimerange",
+    "datetimerange",
   ]) {
     registry.register(type, datetime);
   }
+  registry.register("decimal", number);
+  for (const type of ["reference", "toone", "tooneedit", "toonedetail", "linkone", "linkonedetail"]) {
+    registry.register(type, { default: ReferenceField });
+  }
   registry.register("image", { default: ImageDisplay, form: TextEdit });
   for (const type of [
-    "toone",
-    "tooneedit",
-    "toonedetail",
     "tomany",
     "tomanydetail",
     "tomanay",
-    "linkone",
-    "linkonedetail",
     "linkmany",
     "linkmanay",
   ]) {

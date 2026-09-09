@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import type { FieldFilter, FieldReference } from "mmd-contracts";
 
 export type MmdRecord = Record<string, unknown>;
 export type FieldScene = "list" | "detail" | "form" | "search";
@@ -14,6 +15,12 @@ export interface RendererField {
   readOnly?: boolean;
   options?: Array<{ label: string; value: unknown; color?: string }>;
   dictName?: string;
+  /** 标准筛选配置；false 禁用。 */
+  filter?: FieldFilter | false;
+  /** 条件关联目标，优先于 relationModel。 */
+  references?: FieldReference[];
+  /** 数值编辑使用字符串保留精度。 */
+  decimal?: boolean;
   [key: string]: unknown;
 }
 
@@ -58,6 +65,8 @@ export interface RendererAction {
 }
 
 export interface RendererSearchConfig {
+  /** 紧凑网格及可折叠的高级筛选。 */
+  layout?: "inline" | "compact";
   fields: RendererField[];
 }
 
