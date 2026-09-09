@@ -98,7 +98,6 @@ These opt-in APIs compose the existing renderer; they do not embed a host's auth
 - `mapMetadataFields` applies one immutable field mapper to models, views and search containers. `withReadonlyIdentifier` uses the built-in key renderer for display/edit and text for search. Number precision, references and identifiers use the default field registry without host re-registration.
 - `withClientLifecycle` supports typed `before.save/remove/executeAction` hooks and a success-only `afterMutation` callback. Returning `null` cancels before the request with `MmdCancelledError`, which ActionButtons handles without an error toast. A host can perform audit prompts or payload policy in these hooks. `createRecordVersionStore` stores model/id versions under a configurable header; create one per account/session and explicitly capture response versions. Cross-origin APIs must expose that header. Conflict writes are never automatically retried.
 - `createChangeGuard` tracks dirty forms by ID, ignores clean forms and deduplicates pending confirmations. Share the guard through `MmdProvider changeGuard={guard}` and call `guard.request({ confirm, commit })` for locale switches or other destructive context changes. FormContainer registers changes, clears on save and unregisters on unmount. The host supplies confirmation UI and owns locale preference persistence. Provider metadata is scoped to client + locale, so late old-language results cannot pollute the new scope.
-- `ApplicationShell` provides a sticky header, searchable grouped menu and narrow-screen navigation. Pass brand, account, header and footer slots, plus menu items and `onNavigate`; no icon library is required. `unstyled` and named `classes` let existing applications keep their layout CSS. Menu group and item keys cannot collide. It is optional and is not required by `MmdRenderer`.
 
 ```tsx
 const queryState = useMemo(() => createUrlQueryState({
@@ -115,3 +114,5 @@ const queryState = useMemo(() => createUrlQueryState({
 ```
 
 The query schema and sort field allowlist in this example belong to the host. Backend authorization remains authoritative for all list, relation and mutation requests.
+
+Application shells, site navigation menus, branding, login and account state belong to the host application. MMD provides the metadata-driven CRUD components and their supporting protocols; it does not export an application layout.

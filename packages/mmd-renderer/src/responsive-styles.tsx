@@ -1,18 +1,5 @@
 export const MMD_RESPONSIVE_STYLES = `
 .mmd-relation-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
-.mmd-application-shell { --mmd-sidebar-width: 260px; min-height:100vh; }
-.mmd-application-shell[data-mmd-layout] .mmd-shell-sidebar { position:fixed; width:var(--mmd-sidebar-width); inset:0 auto 0 0; overflow:auto; background:var(--ant-color-bg-container,#fff); z-index:30; padding:20px; box-sizing:border-box; }
-.mmd-application-shell[data-mmd-layout] .mmd-shell-main { margin-left:var(--mmd-sidebar-width); min-width:0; }
-.mmd-application-shell[data-mmd-layout] .mmd-shell-header { position:sticky; top:0; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:16px 24px; background:var(--ant-color-bg-container,#fff); }
-.mmd-application-shell[data-mmd-layout] main { padding:24px; }
-.mmd-shell-toggle, .mmd-shell-close { display:none; }
-@media (max-width: 800px) {
- .mmd-shell-toggle, .mmd-shell-close { display:inline-flex; }
- .mmd-application-shell[data-mmd-layout] .mmd-shell-main { margin-left:0; }
- .mmd-application-shell[data-mmd-layout] .mmd-shell-sidebar { transform:translateX(-100%); }
- .mmd-application-shell[data-mmd-layout] .mmd-shell-sidebar.is-open { transform:none; }
-}
-
 .mmd-list-plain { container: mmd-renderer / inline-size; }
 .mmd-list-toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; align-items:center; }
 .mmd-filter-summary { color:var(--ant-color-text-secondary, #666); font-size:12px; }

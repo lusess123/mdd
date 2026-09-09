@@ -18,7 +18,6 @@ import {
   relatedListContext,
   type RelationResource,
 } from "./relations/related-records";
-import { applicationMenu } from "./shell/application-shell";
 import type { MmdClient, RendererMeta } from "./types";
 
 function clientFixture() {
@@ -294,22 +293,4 @@ test("related defaults match conditional targets and fixed parent constraints al
       record: { kind: "team", owner: "u" },
     }).defaults,
   ).toEqual({ parentId: "actual", status: "active" });
-});
-
-test("menu groups and resource names cannot collide, search includes model and group labels", () => {
-  const items = [
-    {
-      key: "users",
-      label: "User",
-      group: { key: "users", label: "Customers" },
-    },
-    { key: "overview", label: "Overview" },
-  ];
-  expect(
-    applicationMenu({ items, search: "" }).map((item) => item.key),
-  ).toEqual(["group:users", "item:overview"]);
-  expect(
-    applicationMenu({ items, search: "CUSTOMERS" })[0]?.children?.[0]?.key,
-  ).toBe("item:users");
-  expect(applicationMenu({ items, search: "missing" })).toEqual([]);
 });

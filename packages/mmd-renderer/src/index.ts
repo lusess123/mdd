@@ -32,4 +32,3 @@ export * from "./lifecycle/change-guard";
 export * from "./lifecycle/client-lifecycle";
 export * from "./lifecycle/metadata-fields";
 export * from "./relations/related-records";
-export * from "./shell/application-shell";
