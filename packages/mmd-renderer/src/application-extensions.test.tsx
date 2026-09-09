@@ -239,11 +239,14 @@ test("metadata mapping covers model, view and search without mutating input", ()
     },
     dicts: {},
   };
+  original.models.Product!.fieldsObject = { id: { name: "id", readOnly: false } };
   const result = mapMetadataFields({
     meta: original,
     map: withReadonlyIdentifier,
   });
   expect(result.models.Product?.fields[0]?.readOnly).toBe(true);
+  expect(result.models.Product?.fieldsObject?.id?.readOnly).toBe(true);
+  expect(original.models.Product?.fieldsObject?.id?.readOnly).toBe(false);
   expect(
     result.views.list?.dataContainers[0]?.search?.fields[0]?.readOnly,
   ).toBe(false);

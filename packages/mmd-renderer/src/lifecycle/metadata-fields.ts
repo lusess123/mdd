@@ -51,6 +51,9 @@ export function mapMetadataFields({
         {
           ...model,
           fields: fieldsFor(name, model.fields),
+          ...(model.fieldsObject ? { fieldsObject: Object.fromEntries(
+            Object.entries(model.fieldsObject).map(([key, field]) => [key, fieldsFor(name, [field])[0]!]),
+          ) } : {}),
         },
       ]),
     ),
