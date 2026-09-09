@@ -370,3 +370,9 @@ test("日期范围使用本地时区显示并提交 ISO，允许开口且拒绝�
   }
 });
 
+
+test("日期校验拒绝 ISO 中会被 Date 自动进位的 24 点和不存在的日期", () => {
+  for (const value of ["2026-09-09T24:00:00Z", "2026-02-30T12:00:00Z"]) {
+    assert.ok(ResourceFilterDomain.validateFilterValue({ field: dateField, value: [value, null] }));
+  }
+});

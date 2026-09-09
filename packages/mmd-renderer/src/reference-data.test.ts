@@ -68,3 +68,15 @@ test("conditional references preserve typed selectors, prefer specific matches a
   expect(referenceContext({ field: { ...field, references: field.references?.slice(1) }, record: { kind: [0, "0"] } }).canSelect).toBe(false);
   expect(referenceContext({ field: { name: "owner", references: [{ target: "a" }, { target: "b" }] } }).canSelect).toBe(false);
 });
+
+test("invalidation notifies mounted fields; unsubscribe releases listeners", () => {
+  const data = createReferenceData({ resources: [], client: { list: async () => result([]) } });
+  const revisions: number[] = [];
+  const unsubscribe = data.subscribe(() => revisions.push(data.getSnapshot()));
+  data.invalidate();
+  data.invalidate();
+  unsubscribe();
+  data.invalidate();
+  expect(revisions).toEqual([1, 2]);
+  expect(data.getSnapshot()).toBe(3);
+});

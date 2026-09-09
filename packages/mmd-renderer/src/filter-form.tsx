@@ -28,6 +28,7 @@ export function FilterForm({ fields, value = emptyValues, onSearch, layout = "co
   const advanced = available.filter((field) => filterMetadata(field).primary === false);
   return <Form<MmdRecord> form={form} layout={layout === "compact" ? "vertical" : "inline"}
     className={`mmd-search-form${layout === "compact" ? " mmd-filter-form" : ""}`}
+    onFinishFailed={() => setExpanded(true)}
     onFinish={(values) => onSearch(normalizeFilters(values))}>
     <div className={layout === "compact" ? "mmd-filter-grid" : "mmd-filter-inline"}>
       {available.map((field) => <Form.Item key={field.name} name={field.name}

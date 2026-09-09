@@ -46,6 +46,10 @@ export function createReferenceData({
     };
   }
   let cache = createCache();
+  let revision = 0;
+  const listeners = new Set<() => void>();
+  const getSnapshot = () => revision;
+  const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
   const keyOf = (model: string, id: string) => JSON.stringify([model, id]);
   function labelFor(resource: ReferenceResource, row: MmdRecord) {
     const id = String(row[resource.primaryKey ?? "id"] ?? "");
@@ -121,6 +125,6 @@ export function createReferenceData({
     });
     return { options, total: result.total };
   }
-  function invalidate() { cache = createCache(); }
-  return { resolve, search, invalidate, pageSize };
+  function invalidate() { cache = createCache(); revision++; for (const listener of listeners) listener(); }
+  return { resolve, search, invalidate, pageSize, subscribe, getSnapshot };
 }

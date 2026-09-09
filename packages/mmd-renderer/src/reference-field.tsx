@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Button, Empty, Pagination, Select, Space, Spin, Tooltip, Input } from "antd";
 
 import type { FieldRendererProps, RendererField, MmdRecord } from "./types";
@@ -29,6 +29,9 @@ export function referenceContext({ field, record = {} }: { field: RendererField;
   };
 }
 
+const emptySubscribe = () => () => {};
+const zeroSnapshot = () => 0;
+
 export function ReferenceField({
   field,
   value,
@@ -39,6 +42,7 @@ export function ReferenceField({
 }: FieldRendererProps) {
   const context = useReferenceData();
   const data = context?.data;
+  const revision = useSyncExternalStore(data?.subscribe ?? emptySubscribe, data?.getSnapshot ?? zeroSnapshot, zeroSnapshot);
   const { locale } = useMmd();
   const t = (text: { zh: string; en: string }) => locale === "en-US" ? text.en : text.zh;
   const { model } = referenceContext({ field, record });
@@ -78,7 +82,7 @@ export function ReferenceField({
     return () => {
       live = false;
     };
-  }, [data, model, id, retry]);
+  }, [data, model, id, retry, revision]);
   useEffect(() => {
     if (!open || !editable || !data || !model) return;
     let live = true;
@@ -115,7 +119,7 @@ export function ReferenceField({
       live = false;
       clearTimeout(timer);
     };
-  }, [data, model, editable, open, search, page, retry, locale]);
+  }, [data, model, editable, open, search, page, retry, locale, revision]);
   useEffect(() => { setOptions([]); setTotal(0); setPage(1); setSearch(""); }, [model]);
   if (!editable) {
     if (!id) return <span className="empty-value">—</span>;

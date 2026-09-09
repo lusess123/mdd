@@ -169,6 +169,7 @@ const instantPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\
 function instant(value: unknown) {
   if (typeof value !== "string" || !instantPattern.test(value))
     return null;
+  if (Number(value.slice(11, 13)) > 23 || Number(value.slice(14, 16)) > 59 || Number(value.slice(17, 19)) > 59) return null;
   const day = value.slice(0, 10);
   const calendar = new Date(`${day}T00:00:00Z`);
   if (!Number.isFinite(calendar.getTime()) || calendar.toISOString().slice(0, 10) !== day) return null;
