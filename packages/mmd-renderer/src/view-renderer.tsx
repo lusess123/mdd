@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Modal, Space, Spin } from "antd";
+import { Alert, App, Modal, Space, Spin } from "antd";
 
 import { ViewNavigationContext } from "./view-navigation.context";
 import { DetailContainer } from "./detail-container";
@@ -213,7 +213,8 @@ function MmdViewInstance({
   setModal: (input: OpenViewInput | undefined) => void;
   memoryQuery: NonNullable<ListContainerProps["queryState"]>;
 }) {
-  const { loadMeta, meta, reportError, t } = useMmd();
+  const { loadMeta, meta, reportError, t, changeGuard } = useMmd();
+  const { modal: dialogs } = App.useApp();
   const [loading, setLoading] = useState(typeof viewInput === "string");
   const [error, setError] = useState<Error>();
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -293,6 +294,21 @@ function MmdViewInstance({
     );
   }
 
+  const closeModal = () => {
+    void changeGuard.request({
+      commit: () => setModal(undefined),
+      confirm: () => new Promise<boolean>((resolve) => {
+        dialogs.confirm({
+          title: t("form.discardTitle"),
+          content: t("form.discardDescription"),
+          okText: t("form.discard"),
+          cancelText: t("form.keepEditing"),
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false),
+        });
+      }),
+    });
+  };
   const modalResource = relations?.resources.find((resource) => resource.name === modal?.model);
   const refresh = () => {
     setRefreshVersion((version) => version + 1);
@@ -347,7 +363,7 @@ function MmdViewInstance({
         width="min(1000px, 92vw)"
         title={modal?.view}
         destroyOnHidden
-        onCancel={() => setModal(undefined)}
+        onCancel={closeModal}
       >
         {modal ? (
           <MmdView
@@ -358,7 +374,7 @@ function MmdViewInstance({
             where={modal.where}
             relations={modalResource && relations ? { ...relations, resource: modalResource, tabState: undefined } : undefined}
             list={list}
-            onClose={() => setModal(undefined)}
+            onClose={closeModal}
             onRefresh={refresh}
           />
         ) : null}

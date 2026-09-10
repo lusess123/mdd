@@ -11,6 +11,10 @@ export function detectMmdLocale(
 }
 
 const zhCN: MmdMessages = {
+  "form.discardTitle": "放弃未保存的修改？",
+  "form.discardDescription": "关闭后将丢失当前表单的未保存内容。",
+  "form.discard": "放弃修改",
+  "form.keepEditing": "继续编辑",
   "resource.management": "数据管理",
   "resource.new": "新增",
   "resource.edit": "编辑",
@@ -71,6 +75,10 @@ const zhCN: MmdMessages = {
 };
 
 const enUS: MmdMessages = {
+  "form.discardTitle": "Discard unsaved changes?",
+  "form.discardDescription": "Closing will discard the unsaved changes in this form.",
+  "form.discard": "Discard changes",
+  "form.keepEditing": "Keep editing",
   "resource.management": "Data management",
   "resource.new": "New",
   "resource.edit": "Edit",
