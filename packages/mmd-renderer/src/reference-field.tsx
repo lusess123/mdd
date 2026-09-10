@@ -3,6 +3,7 @@ import { Button, Empty, Pagination, Select, Space, Spin, Tooltip, Input } from "
 
 import type { FieldRendererProps, RendererField, MmdRecord } from "./types";
 import { useMmd } from "./provider";
+import { useViewNavigation } from "./view-navigation.context";
 import { useReferenceData } from "./reference-provider";
 
 /** 单元素筛选数组仅用于解析目标，不修改原始筛选值。歧义时退回 ID 输入。 */
@@ -41,6 +42,7 @@ export function ReferenceField({
   onChange,
 }: FieldRendererProps) {
   const context = useReferenceData();
+  const openView = useViewNavigation();
   const data = context?.data;
   const revision = useSyncExternalStore(data?.subscribe ?? emptySubscribe, data?.getSnapshot ?? zeroSnapshot, zeroSnapshot);
   const { locale } = useMmd();
@@ -133,6 +135,13 @@ export function ReferenceField({
           </span>
         </Tooltip>
       );
+    if (!context?.href && openView) return (
+      <Tooltip title={id}>
+        <Button type="link" className="mmd-reference-link" onClick={() => openView({ model, view: "detailview", id })}>
+          {label ?? `${t({ zh: "记录", en: "Record" })} · ${id.slice(-8)}`} <span aria-hidden="true">↗</span>
+        </Button>
+      </Tooltip>
+    );
     return (
       <Tooltip
         title={

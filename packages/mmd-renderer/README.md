@@ -154,3 +154,9 @@ For detail pages, pass `relations={{ resource, resources }}` to render related t
 ```
 
 `onOpenView` 的关联列表请求携带固定 `where` 与新建 `defaults`；清除关联筛选时重新打开无约束列表。省略路由回调时普通 CRUD 沿用内置弹窗，资源页不显示无法执行的返回/清除按钮。可通过 `mmd-resource-heading`、`mmd-resource-eyebrow`、`mmd-resource-capabilities`、`mmd-resource-surface`、`mmd-resource-filter-notice`、`mmd-resource-relations` 类名适配品牌样式。Shell、菜单、账号及应用路由仍由宿主实现。
+
+### 内嵌 CRUD（无需业务路由）
+
+与网站 playground 示例一致，`MmdRenderer` / `MmdResourcePage` 未传 `onOpenView` 时，新增、详情、编辑和关联记录使用组件内弹窗。传入 `resources` 后，详情弹窗继续展示关联子表，关联子表的新建默认值、固定查询条件和变更刷新由 MMD 传递。`ReferenceProvider` 只配置 `data` 即可打开关联记录；显式配置 `href/navigate` 时仍使用宿主导航。
+
+默认列表和关联标签状态保留在组件实例内，不改变 URL。只有显式设置 `list.persistQuery: true`（或提供 `queryState/tabState`）才使用 URL 联动。可用 `initialOpenView` 从宿主概览打开一条记录；它只作为初始弹窗，不要求宿主实现路由或弹窗状态。

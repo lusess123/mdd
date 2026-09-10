@@ -188,6 +188,8 @@ export interface MmdClient {
 }
 
 export interface OpenViewInput {
+  /** 关联列表的固定约束，不会被搜索条件覆盖。 */
+  where?: MmdRecord;
   /** 新建表单的初始值；仍受字段可写性约束。 */
   defaults?: MmdRecord;
   model: string;

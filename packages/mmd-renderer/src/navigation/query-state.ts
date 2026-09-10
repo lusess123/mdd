@@ -17,6 +17,12 @@ export interface QueryState<T> {
   subscribe?: (listener: () => void) => () => void;
 }
 
+/** 内嵌页面的实例级查询状态，不读写 URL。 */
+export function createMemoryQueryState<T>(initial: T): QueryState<T> {
+  let value = initial;
+  return { read: () => value, write: (next) => { value = next; } };
+}
+
 /** 每个参数键独立保存；宿主负责 URL、history.state 和路由器的实际读写。 */
 export function createUrlQueryState<T>({
   key = "query",

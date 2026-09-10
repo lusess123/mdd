@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Modal, Space, Spin } from "antd";
 
+import { ViewNavigationContext } from "./view-navigation.context";
 import { DetailContainer } from "./detail-container";
 import { FormContainer } from "./form-container";
 import {
@@ -11,6 +12,8 @@ import {
 } from "./relations/related-records";
 import {
   createBrowserTabState,
+  createMemoryQueryState,
+  parseListQuery,
   type QueryState,
 } from "./navigation/query-state";
 import { ListContainer, type ListContainerProps } from "./list-container";
@@ -163,6 +166,8 @@ export interface MmdViewProps {
     "container" | "model" | "where" | "defaults" | "openView" | "onRowChange"
   >;
   slots?: MmdPageSlots;
+  /** 可选的初始弹窗，例如宿主概览中的记录入口；后续切换由组件管理。 */
+  initialOpenView?: OpenViewInput;
   onClose?: () => void;
   onRefresh?: () => void;
   onRowChange?: (row: MmdRecord) => void;
@@ -173,10 +178,16 @@ export function MmdView(props: MmdViewProps) {
   const model =
     typeof props.model === "string" ? props.model : props.model?.name;
   const view = typeof props.view === "string" ? props.view : props.view.name;
+  const [modal, setModal] = useState<OpenViewInput | undefined>(props.initialOpenView);
+  const initialQueryKey = JSON.stringify(props.list?.initialQuery);
+  const memoryQuery = useMemo(() => createMemoryQueryState(parseListQuery({}, props.list?.initialQuery)), [model, view, props.id, initialQueryKey]);
   return (
     <MmdViewInstance
       key={JSON.stringify([model, view, props.id, locale])}
       {...props}
+      modal={modal}
+      setModal={setModal}
+      memoryQuery={memoryQuery}
     />
   );
 }
@@ -193,16 +204,22 @@ function MmdViewInstance({
   onRefresh,
   onRowChange,
   onOpenView,
+  modal,
+  setModal,
+  memoryQuery,
   relations,
-}: MmdViewProps) {
+}: MmdViewProps & {
+  modal: OpenViewInput | undefined;
+  setModal: (input: OpenViewInput | undefined) => void;
+  memoryQuery: NonNullable<ListContainerProps["queryState"]>;
+}) {
   const { loadMeta, meta, reportError, t } = useMmd();
   const [loading, setLoading] = useState(typeof viewInput === "string");
   const [error, setError] = useState<Error>();
-  const [modal, setModal] = useState<OpenViewInput>();
   const [refreshVersion, setRefreshVersion] = useState(0);
   const tabState = useMemo(
-    () => relations?.tabState ?? createBrowserTabState(),
-    [relations?.tabState],
+    () => relations?.tabState ?? (list?.persistQuery ? createBrowserTabState() : undefined),
+    [relations?.tabState, list?.persistQuery],
   );
   const modelName =
     typeof modelInput === "string" ? modelInput : modelInput?.name;
@@ -276,12 +293,13 @@ function MmdViewInstance({
     );
   }
 
+  const modalResource = relations?.resources.find((resource) => resource.name === modal?.model);
   const refresh = () => {
     setRefreshVersion((version) => version + 1);
     onRefresh?.();
   };
   return (
-    <>
+    <ViewNavigationContext.Provider value={onOpenView ?? setModal}>
       <div className="mmd-view-root">
         <ViewEngine
           key={refreshVersion}
@@ -290,7 +308,7 @@ function MmdViewInstance({
           id={id}
           where={where}
           defaults={defaults}
-          list={list}
+          list={list?.persistQuery || list?.queryState ? list : { ...list, queryState: memoryQuery }}
           slots={slots}
           openView={onOpenView ?? setModal}
           close={onClose}
@@ -308,7 +326,7 @@ function MmdViewInstance({
             id={id}
             revision={refreshVersion}
             tabState={tabState}
-            onOpenList={relations.onOpenList}
+            onOpenList={relations.onOpenList ?? ((input) => setModal({ ...input, view: "listview" }))}
             renderList={({ model, where, defaults, queryKey }) => (
               <MmdView
                 model={model}
@@ -316,7 +334,7 @@ function MmdViewInstance({
                 where={where}
                 defaults={defaults}
                 list={{ ...list, queryKey }}
-                onOpenView={onOpenView}
+                onOpenView={onOpenView ?? setModal}
               />
             )}
           />
@@ -337,13 +355,15 @@ function MmdViewInstance({
             view={modal.view}
             id={modal.id}
             defaults={modal.defaults}
+            where={modal.where}
+            relations={modalResource && relations ? { ...relations, resource: modalResource, tabState: undefined } : undefined}
             list={list}
             onClose={() => setModal(undefined)}
             onRefresh={refresh}
           />
         ) : null}
       </Modal>
-    </>
+    </ViewNavigationContext.Provider>
   );
 }
 
