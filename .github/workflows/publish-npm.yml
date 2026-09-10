@@ -5,9 +5,20 @@ on:
     paths:
       - "packages/**"
       - "scripts/check-npm-packages.ts"
+      - "scripts/check-release.ts"
+      - "CHANGELOG.md"
+      - "apps/website/**"
+      - "tests/browser/**"
+      - "playwright.config.ts"
+      - ".github/workflows/deploy-production.yml"
       - "package.json"
       - "bun.lock"
       - ".github/workflows/publish-npm.yml"
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       publish:
@@ -37,6 +48,15 @@ jobs:
       - run: bun run release:check
       - run: bun test packages/mmd-engine/test packages/mmd-renderer/src apps/website/src/lib/install-commands.test.ts
       - run: bun run --filter mmd-contracts --filter mmd-engine --filter mmd-renderer typecheck
+      - run: bun --cwd=apps/website run build
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure
+          path: test-results/
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: npm-packages
@@ -45,7 +65,7 @@ jobs:
           retention-days: 7
 
   publish:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+    if: inputs.publish && github.ref == 'refs/heads/main'
     needs: check
     runs-on: ubuntu-latest
     permissions:

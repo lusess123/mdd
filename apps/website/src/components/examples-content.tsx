@@ -53,6 +53,7 @@ export function ExamplesContent() {
 
   return (
     <div className="content-page">
+      <p><Link className="button button-primary" href="/playground/embedded">MMD 0.2.0 · {t("nav.playground")} →</Link></p>
       <PageIntro
         kicker={t("examples.kicker")}
         title={t("examples.title")}

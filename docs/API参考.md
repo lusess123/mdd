@@ -53,6 +53,14 @@ Content-Type: application/json
 
 过滤运算符为 `eq`、`contains`、`in`、`gte`、`lte`。模型未声明的字段和不适合字段类型的运算符会被拒绝。
 
+### 0.2.0 筛选与关联约束
+
+模型字段的 `filter.kind` 支持 `text`、`id`、`reference`、`enum`、`boolean`、`number`、`datetime`；`primary: false` 放入可展开的高级筛选。`decimal: true` 使用字符串保留精度，适配器必须精确比较。`search` 中的 `false`、数字 `0` 和字符串 `"0"` 不会互相转换。
+
+Renderer `client.list({ where: { categoryId: "category-1" } })` 经 `createHttpMmdClient` 转成 Engine 接受的 `filters`。关联子表始终附带父记录约束，新建通过 `initialValues` 继承外键。服务端仍必须校验访问权限。
+
+只读 Key 可在列表/详情显示；它不会进入表单写入。行序号是展示字段，不属于 API 数据。完整元数据和可运行 adapter 见 [内嵌示例](../examples/embedded-crud/README.md)。
+
 ### 查询单条
 
 ```http

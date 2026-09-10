@@ -1,5 +1,6 @@
 export const zhCN = {
   "nav.home": "首页",
+  "nav.changelog": "更新日志",
   "nav.docs": "文档",
   "nav.examples": "示例",
   "nav.playground": "在线体验",
@@ -143,6 +144,7 @@ export type MessageOverrides = Partial<
 
 const enUS: Messages = {
   "nav.home": "Home",
+  "nav.changelog": "Changelog",
   "nav.docs": "Docs",
   "nav.examples": "Examples",
   "nav.playground": "Playground",

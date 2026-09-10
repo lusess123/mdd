@@ -1,5 +1,6 @@
 "use client";
 
+import { ReleaseDocs } from "./release-docs";
 import { installCode } from "../lib/install-commands";
 import { CodeBlock } from "./code-block";
 import { PageIntro } from "./page-intro";
@@ -226,6 +227,10 @@ export function DocsContent() {
               <span>{index}</span>{t(title)}
             </a>
           ))}
+          <a href="#embedded">0.2.0 · Embedded CRUD</a>
+          <a href="#filters">Filters</a>
+          <a href="#relations">Relations</a>
+          <a href="#lifecycle">Lifecycle</a>
           <div className="sidebar-status">
             <span className="live-dot" />
             {t("docs.referenceStatus")}
@@ -257,6 +262,7 @@ export function DocsContent() {
             </div>
           </section>
 
+          <ReleaseDocs />
           {sections.map(([index, title, blocks]) => (
             <section className="doc-section" id={`section-${index}`} key={index}>
               <div className="doc-section-title"><span>{index}</span><h2>{t(title)}</h2></div>

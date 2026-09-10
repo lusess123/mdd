@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Button, InputNumber, Progress } from "antd";
 import {
   MmdRequestError,
@@ -261,6 +263,7 @@ export function PlaygroundContent() {
 
   return (
     <div className="playground-page">
+      <p><Link className="button button-primary" href="/playground/embedded">MMD 0.2.0 · {t("nav.playground")} →</Link></p>
       <PageIntro
         kicker={t("playground.kicker")}
         title={t("playground.title")}

@@ -16,7 +16,8 @@ on:
           - update-hyperdrive
 
 permissions:
-  contents: read
+  contents: write
+  id-token: write
 
 concurrency:
   group: mmd-production
@@ -79,7 +80,7 @@ jobs:
               --origin-connection-limit=5 \
               --caching-disabled
 
-            for attempt in {1..6}; do
+            for _attempt in {1..6}; do
               hyperdrive_id="$(find_id)"
               [ -n "$hyperdrive_id" ] && break
               sleep 5
@@ -103,7 +104,7 @@ jobs:
 
   validate:
     name: Validate repository
-    if: github.event_name == 'push' || inputs.operation == 'deploy'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.operation == 'deploy')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,6 +115,14 @@ jobs:
       - run: bun run test
       - run: bun run typecheck
       - run: bun run build
+
+  publish-packages:
+    name: Publish verified npm packages
+    needs: validate
+    uses: ./.github/workflows/publish-npm.yml
+    with:
+      publish: true
+    secrets: inherit
 
   migrate:
     name: Migrate Neon database
@@ -146,7 +155,7 @@ jobs:
 
   deploy-api:
     name: Deploy Hono API
-    needs: [validate, migrate]
+    needs: [validate, migrate, publish-packages]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -159,7 +168,10 @@ jobs:
       - name: Check deployment credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: test -n "$CLOUDFLARE_API_TOKEN"
+        working-directory: apps/demo-api
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          bunx wrangler whoami > /dev/null
       - name: Deploy API Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -202,7 +214,10 @@ jobs:
       - name: Check Cloudflare credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: test -n "$CLOUDFLARE_API_TOKEN"
+        working-directory: apps/demo-api
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          bunx wrangler whoami > /dev/null
       - run: bun --cwd=apps/website run build
       - name: Deploy website
         env:
@@ -212,3 +227,38 @@ jobs:
         run: >-
           curl --fail --retry-all-errors --retry 24 --retry-delay 5
           --retry-max-time 120 https://mmd.zyking.xyz
+
+      - name: Verify released guides and interactive demos
+        env:
+          MMD_TEST_BASE_URL: https://mmd.zyking.xyz
+        run: |
+          bunx playwright install --with-deps chromium
+          bun run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: production-browser-failure
+          path: test-results/
+          if-no-files-found: ignore
+      - name: Create versioned GitHub release after deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(jq -r .version packages/mmd-renderer/package.json)"
+          tag="v$version"
+          # JavaScript template interpolation must remain literal to the shell.
+          # shellcheck disable=SC2016
+          bun -e '
+            const version = JSON.parse(await Bun.file("packages/mmd-renderer/package.json").text()).version;
+            const log = await Bun.file("CHANGELOG.md").text();
+            const section = log.split(`## [${version}]`)[1]?.split("\n## [")[0];
+            if (!section) throw new Error("Missing release notes");
+            await Bun.write("/tmp/mmd-release-notes.md", `## ${version}${section}\n\n[Docs](https://mmd.zyking.xyz/docs/) · [Demo](https://mmd.zyking.xyz/playground/embedded/) · [Changelog](https://mmd.zyking.xyz/changelog/)\n`);
+          '
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "$tag already has a release."
+          else
+            gh release create "$tag" --target "$GITHUB_SHA" --title "MMD $version" --notes-file /tmp/mmd-release-notes.md
+          fi

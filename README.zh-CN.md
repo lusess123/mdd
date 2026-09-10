@@ -6,6 +6,14 @@ MMD 是一套元数据驱动的全栈管理工具。定义一次模型，即可�
 
 当前仓库已包含完整的 Product 示例：Hono API、通过 Cloudflare Hyperdrive 访问的 Neon PostgreSQL、Next.js 静态网站、自定义库存字段、发布/归档/复制操作、中英文界面和在线 API 文档。
 
+## 0.2.0：文档与可操作示例
+
+- [在线 Changelog](https://mmd.zyking.xyz/changelog/) · [仓库 Changelog](./CHANGELOG.md)
+- [内嵌 CRUD / 关联 Demo](https://mmd.zyking.xyz/playground/embedded/)：七类筛选、只读 ID、连续序号、关联新建、JSON 与未保存保护。
+- [接入文档](https://mmd.zyking.xyz/docs/#embedded) · [示例源码与运行步骤](./examples/embedded-crud/README.md)
+
+新示例运行真实 Engine 和 Renderer，数据只保存在当前页面；刷新重置，无需数据库。原 Product Playground 继续使用真实数据库 API。每次发版必须同步 changelog、文档和可验收 demo，见 [发布规则](./docs/npm发布.md)。
+
 ## 本地运行
 
 安装 [Bun](https://bun.sh/) 后执行：
@@ -57,7 +65,7 @@ bun add mmd-contracts mmd-engine mmd-renderer
 
 - API：原生 `fetch` 请求同源 `/api`
 - 认证：匿名访问并携带同源 Cookie
-- 路由：Hash 路由，适合静态托管
+- 导航：内置 CRUD 弹窗，宿主路由可选；保留原 Hash 导航配置供自定义使用
 - 错误：超时、网络和 API 错误的统一解析与提示
 - 国际化：内置中文和英文，按浏览器语言选择
 
@@ -83,6 +91,8 @@ examples              可复制的前端和后端示例
 bun run test
 bun run typecheck
 bun run build
+bun run test:browser
+bun run release:check
 ```
 
 ## 文档

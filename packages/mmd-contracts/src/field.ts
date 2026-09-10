@@ -81,8 +81,17 @@ export interface FieldDefinition {
   type?: FieldType;
   required?: boolean;
   readOnly?: boolean;
+  /** Key 默认隐藏；显式 true 时在列表和详情显示，仍受 pageStyle 控制。 */
   list?: boolean;
-  options?: FieldOption[];
+  /** 多选编辑器允许新增字符串候选；默认只允许选择已知值。 */
+  allowCustom?: boolean;
+  options?: FieldOption<string | number | boolean>[];
+  /** 标准筛选配置；false 明确禁用自动生成筛选。 */
+  filter?: import("./filter").FieldFilter | false;
+  /** 条件关联目标；优先于 relationModel。 */
+  references?: import("./filter").FieldReference[];
+  /** 数值编辑保留字符串精度。 */
+  decimal?: boolean;
   pageStyle?: import("./model").PageStyle[];
   relationModel?: string;
   dictName?: string;

@@ -38,6 +38,8 @@ export enum RenderType {
 export { RenderType as IRenderType };
 
 export interface ViewField {
+  /** 可覆盖模型字段的筛选配置。 */
+  filter?: import("./filter").FieldFilter | false;
   name: string;
   label?: string;
   dictName?: string;
@@ -51,6 +53,8 @@ export interface ViewField {
 }
 
 export interface SearchConfig {
+  /** compact 使用响应式网格与更多筛选，默认 inline。 */
+  layout?: "inline" | "compact";
   fields: ViewField[];
 }
 
@@ -65,6 +69,8 @@ export interface DataContainer {
 
 export interface ListDataContainer extends DataContainer {
   type: "list";
+  /** 是否在业务字段前显示跨页连续序号；默认 false，不作为查询或写入字段。 */
+  showRowNumber?: boolean;
   search: SearchConfig;
   actions: ActionDefinition[];
   dataActions: ActionDefinition[];
