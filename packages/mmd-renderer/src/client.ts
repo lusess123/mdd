@@ -30,7 +30,11 @@ export const defaultMmdApiPaths: MmdApiPaths = {
   action: (name) => `/mmd/actions/${encodeURIComponent(name)}`,
 };
 
-function post<T>(request: MmdRequest, path: string, input: unknown): Promise<T> {
+function post<T>(
+  request: MmdRequest,
+  path: string,
+  input: unknown,
+): Promise<T> {
   return request<T>(path, { method: "POST", body: JSON.stringify(input) });
 }
 
@@ -52,10 +56,12 @@ function normalizeMeta(raw: unknown): RendererMeta {
   const value = unwrapData(raw as RendererMeta | { data: RendererMeta });
   return {
     models: byName(
-      (value as { models?: RendererModel[] | Record<string, RendererModel> }).models,
+      (value as { models?: RendererModel[] | Record<string, RendererModel> })
+        .models,
     ),
     views: byName(
-      (value as { views?: RendererView[] | Record<string, RendererView> }).views,
+      (value as { views?: RendererView[] | Record<string, RendererView> })
+        .views,
     ),
     dicts:
       (value as { dicts?: Record<string, RendererDictionary> }).dicts ?? {},
@@ -99,7 +105,19 @@ export function createHttpMmdClient(
       return normalizeMeta(await post(request, paths.meta, input));
     },
     async list(input) {
-      return normalizeList(await post(request, paths.list, input), input);
+      const { where, ...query } = input;
+      // 渲染器使用键值关系约束，标准 Engine 使用显式过滤条件。
+      const wire = where
+        ? {
+            ...query,
+            filters: Object.entries(where).map(([field, value]) => ({
+              field,
+              operator: Array.isArray(value) ? "in" : "eq",
+              value,
+            })),
+          }
+        : query;
+      return normalizeList(await post(request, paths.list, wire), input);
     },
     async get(input) {
       return unwrapData(
@@ -125,7 +143,9 @@ export function createHttpMmdClient(
         | { data: { affected: number } }
         | { success: boolean }
       >(request, paths.remove, input);
-      const value = unwrapData(raw as { affected: number } | { data: { affected: number } });
+      const value = unwrapData(
+        raw as { affected: number } | { data: { affected: number } },
+      );
       return {
         affected:
           "affected" in value
@@ -153,7 +173,11 @@ export function createHttpMmdClient(
           body: JSON.stringify(body),
         });
       }
-      const raw = await post<unknown>(request, paths.action(input.action), body);
+      const raw = await post<unknown>(
+        request,
+        paths.action(input.action),
+        body,
+      );
       return unwrapData(raw as unknown | { data: unknown });
     },
   };

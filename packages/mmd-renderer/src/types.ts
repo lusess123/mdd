@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import type { FieldFilter, FieldReference } from "mmd-contracts";
 
 export type MmdRecord = Record<string, unknown>;
 export type FieldScene = "list" | "detail" | "form" | "search";
@@ -14,6 +15,12 @@ export interface RendererField {
   readOnly?: boolean;
   options?: Array<{ label: string; value: unknown; color?: string }>;
   dictName?: string;
+  /** 标准筛选配置；false 禁用。 */
+  filter?: FieldFilter | false;
+  /** 条件关联目标，优先于 relationModel。 */
+  references?: FieldReference[];
+  /** 数值编辑使用字符串保留精度。 */
+  decimal?: boolean;
   [key: string]: unknown;
 }
 
@@ -58,6 +65,8 @@ export interface RendererAction {
 }
 
 export interface RendererSearchConfig {
+  /** 紧凑网格及可折叠的高级筛选。 */
+  layout?: "inline" | "compact";
   fields: RendererField[];
 }
 
@@ -72,6 +81,8 @@ export interface RendererDataContainer {
   actions?: RendererAction[];
   dataActions?: RendererAction[];
   pageSize?: number;
+  /** 在业务字段前显示跨页连续序号；默认 false。 */
+  showRowNumber?: boolean;
   [key: string]: unknown;
 }
 
@@ -121,6 +132,8 @@ export interface MetaQuery {
 }
 
 export interface MmdListInput {
+  /** 有序排序条件；服务端必须校验字段及方向。 */
+  sort?: Array<{ field: string; direction: "asc" | "desc" }>;
   model: string;
   fields?: string[];
   page?: number;
@@ -175,6 +188,10 @@ export interface MmdClient {
 }
 
 export interface OpenViewInput {
+  /** 关联列表的固定约束，不会被搜索条件覆盖。 */
+  where?: MmdRecord;
+  /** 新建表单的初始值；仍受字段可写性约束。 */
+  defaults?: MmdRecord;
   model: string;
   view: string;
   id?: string;

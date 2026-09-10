@@ -197,6 +197,23 @@ describe("MmdEngine", () => {
     expect(adapter.rows).toHaveLength(0);
   });
 
+  test("showing a Key never permits writing it or another read-only field", async () => {
+    const registry = new MmdRegistry().registerModel({
+      ...productModel,
+      fields: productModel.fields.map((field) =>
+        field.name === "id" ? { ...field, list: true } : field,
+      ),
+    });
+    const adapter = new MemoryAdapter([{ id: "p1", name: "Alpha" }]);
+    const engine = new MmdEngine({ registry, adapter });
+    for (const data of [{ id: "p2" }, { updatedAt: "2026-09-01T00:00:00Z" }]) {
+      await expect(engine.save({ model: "Product", id: "p1", data }))
+        .rejects.toMatchObject({ code: "INVALID_INPUT" });
+    }
+    expect(adapter.lastUpdateInput).toBeUndefined();
+    expect(adapter.rows).toEqual([{ id: "p1", name: "Alpha" }]);
+  });
+
   test("旧版 del 动作也必须先由模型声明", async () => {
     const { engine, adapter } = createEngine([{ id: "p1", name: "Alpha" }]);
 
@@ -289,4 +306,25 @@ describe("MmdEngine", () => {
     expect(result.page).toBe(1);
     expect(result.pageSize).toBe(20);
   });
+});
+
+test("显式筛选语义覆盖字段显示类型且不丢失精度与假值", async () => {
+  const adapter = new MemoryAdapter([]);
+  const registry = new MmdRegistry().registerModel({ name: "Fields", fields: [
+    { name: "id", fieldType: ModelFieldType.Key, filter: { kind: "id" } },
+    { name: "state", fieldType: ModelFieldType.Text, filter: { kind: "enum", allowCustom: true } },
+    { name: "amount", fieldType: ModelFieldType.Text, filter: { kind: "number", decimal: true } },
+    { name: "enabled", fieldType: ModelFieldType.Boolean, filter: { kind: "boolean" } },
+    { name: "secret", fieldType: ModelFieldType.Text, filter: false },
+  ] });
+  const engine = new MmdEngine({ registry, adapter });
+  await engine.queryList({ model: "Fields", search: { id: "ABC", state: ["old", "new"], amount: ["9007199254740993.01", null], enabled: false } });
+  expect(adapter.lastListInput?.filter).toEqual({ and: [
+    { field: "id", operator: "eq", value: "ABC" },
+    { field: "state", operator: "in", value: ["old", "new"] },
+    { field: "amount", operator: "gte", value: "9007199254740993.01" },
+    { field: "enabled", operator: "eq", value: false },
+  ] });
+  await expect(engine.queryList({ model: "Fields", search: { amount: [1, 2, 3] } })).rejects.toThrow("range");
+  await expect(engine.queryList({ model: "Fields", search: { secret: "x" } })).rejects.toThrow("disabled");
 });

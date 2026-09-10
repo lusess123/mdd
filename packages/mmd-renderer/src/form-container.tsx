@@ -1,9 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useId,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Alert, Card, Form, Skeleton, Space } from "antd";
 
+import { createRecordFieldsSelector } from "./record-fields";
 import { isJsonField, validateJson } from "./json-value";
+import {
+  isReadOnlyField,
+  writableFormValues,
+  initialFormValues,
+} from "./form-values";
 import { ActionButtons } from "./action-buttons";
 import { MmdField } from "./field-renderer";
 import { translateMetadataLabel } from "./i18n";
@@ -21,6 +34,7 @@ export interface FormContainerProps {
   container: RendererDataContainer;
   model?: RendererModel;
   id?: string;
+  defaults?: MmdRecord;
   openView?: (input: OpenViewInput) => void;
   close?: () => void;
   refresh?: () => void | Promise<void>;
@@ -35,12 +49,18 @@ export function FormContainer({
   container,
   model,
   id,
+  defaults,
   openView,
   close,
   refresh,
   onSaved,
 }: FormContainerProps) {
-  const { client, meta, reportError, t } = useMmd();
+  const { client, meta, reportError, t, locale, changeGuard } = useMmd();
+  const formId = useId();
+  useEffect(
+    () => () => changeGuard.setDirty({ id: formId, value: false }),
+    [changeGuard, formId],
+  );
   const [form] = Form.useForm<MmdRecord>();
   const [draft, setDraft] = useState<MmdRecord>({});
   const [loading, setLoading] = useState(Boolean(id));
@@ -54,18 +74,42 @@ export function FormContainer({
     [container, meta, model],
   );
 
+  const selectRecordFields = useMemo(createRecordFieldsSelector, []);
+  const recordFields = selectRecordFields(fields);
+  const currentFields = useRef(fields);
   useEffect(() => {
-    const defaults = Object.fromEntries(
-      fields
-        .filter((field) => field.defaultValue !== undefined)
-        .map((field) => [field.name, field.defaultValue]),
-    );
+    currentFields.current = fields;
+  }, [fields]);
+
+  const defaultsKey = JSON.stringify(id ? {} : (defaults ?? {}));
+  useEffect(() => {
+    const defaults = initialFormValues({
+      fields: currentFields.current,
+      keyField,
+      defaults: JSON.parse(defaultsKey),
+    });
+    changeGuard.setDirty({ id: formId, value: false });
+    form.resetFields();
+    setError(undefined);
     setDraft(defaults);
     form.setFieldsValue(defaults);
-  }, [fields, form]);
+  }, [
+    container.name,
+    id,
+    recordFields,
+    form,
+    locale,
+    changeGuard,
+    formId,
+    defaultsKey,
+    keyField,
+  ]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(undefined);
@@ -73,7 +117,7 @@ export function FormContainer({
       .get({
         model: container.name,
         id,
-        fields: fields.map((field) => field.name),
+        fields: recordFields,
       })
       .then((record) => {
         if (cancelled || !record) return;
@@ -89,7 +133,7 @@ export function FormContainer({
     return () => {
       cancelled = true;
     };
-  }, [client, container.name, fields, form, id, reportError]);
+  }, [client, container.name, recordFields, form, id, reportError, locale]);
 
   const submit = useCallback(async () => {
     const values = await form.validateFields().catch(() => {
@@ -98,14 +142,27 @@ export function FormContainer({
     const saved = await client.save({
       model: container.name,
       id,
-      row: values,
-      fields: fields.map((field) => field.name),
+      row: writableFormValues({ values, fields, keyField }),
+      fields: recordFields,
     });
+    changeGuard.setDirty({ id: formId, value: false });
     setDraft(saved);
     form.setFieldsValue(saved);
     onSaved?.(saved);
     return saved;
-  }, [client, container.name, fields, form, id, onSaved, t]);
+  }, [
+    client,
+    container.name,
+    fields,
+    recordFields,
+    form,
+    id,
+    keyField,
+    onSaved,
+    t,
+    changeGuard,
+    formId,
+  ]);
 
   if (loading) {
     return (
@@ -137,7 +194,10 @@ export function FormContainer({
           className="mmd-edit-form"
           form={form}
           layout="vertical"
-          onValuesChange={(_change, values) => setDraft(values)}
+          onValuesChange={(_change, values) => {
+            changeGuard.setDirty({ id: formId, value: true });
+            setDraft(values);
+          }}
         >
           {fields.map((field) => (
             <Form.Item
@@ -150,7 +210,7 @@ export function FormContainer({
                 field.label,
               )}
               rules={[
-                ...(field.required
+                ...(field.required && !isReadOnlyField(field, keyField)
                   ? [
                       {
                         required: true,
@@ -165,7 +225,7 @@ export function FormContainer({
                       },
                     ]
                   : []),
-                ...(isJsonField(field)
+                ...(isJsonField(field) && !isReadOnlyField(field, keyField)
                   ? [
                       {
                         validator: (_rule: unknown, value: unknown) =>
@@ -180,8 +240,9 @@ export function FormContainer({
               <MmdField
                 field={field}
                 scene="form"
+                record={draft}
                 value={undefined}
-                disabled={field.readOnly}
+                disabled={isReadOnlyField(field, keyField)}
               />
             </Form.Item>
           ))}

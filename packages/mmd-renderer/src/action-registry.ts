@@ -46,12 +46,14 @@ export class ActionRegistry {
 
   clone(): ActionRegistry {
     const registry = new ActionRegistry();
-    for (const [name, handler] of this.#handlers) registry.register(name, handler);
+    for (const [name, handler] of this.#handlers)
+      registry.register(name, handler);
     return registry;
   }
 
   extend(source: ActionRegistry): this {
-    for (const [name, handler] of source.#handlers) this.register(name, handler);
+    for (const [name, handler] of source.#handlers)
+      this.register(name, handler);
     return this;
   }
 }
@@ -63,7 +65,11 @@ function openView(view: string): ActionHandler {
     context.openView?.({
       model: context.model,
       view: action.viewName ?? view,
-      id: id === undefined || id === null ? undefined : String(id),
+      id:
+        view === "newview" || id === undefined || id === null
+          ? undefined
+          : String(id),
+      ...(view === "newview" ? { defaults: context.record } : {}),
     });
   };
 }
@@ -82,7 +88,8 @@ const remove: ActionHandler = async (context) => {
       : recordId === undefined || recordId === null
         ? []
         : [String(recordId)];
-  if (ids.length === 0) throw new Error("Delete requires at least one record id");
+  if (ids.length === 0)
+    throw new Error("Delete requires at least one record id");
 
   const data = await context.client.remove({ model: context.model, ids });
   return { data, refresh: true };

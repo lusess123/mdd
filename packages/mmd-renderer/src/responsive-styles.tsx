@@ -1,4 +1,15 @@
 export const MMD_RESPONSIVE_STYLES = `
+:where(.mmd-resource-heading) { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
+:where(.mmd-resource-heading h1 small) { margin-left:12px; font-size:14px; color:var(--ant-color-text-secondary, #666); }
+:where(.mmd-resource-eyebrow) { display:block; color:var(--ant-color-text-secondary, #666); }
+:where(.mmd-resource-filter-notice, .mmd-resource-capabilities) { margin-bottom:12px; }
+:where(.mmd-resource-relations) { margin-top:24px; }
+
+.mmd-relation-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.mmd-list-plain { container: mmd-renderer / inline-size; }
+.mmd-list-toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; align-items:center; }
+.mmd-filter-summary { color:var(--ant-color-text-secondary, #666); font-size:12px; }
+
 .mmd-view-root {
   container: mmd-renderer / inline-size;
   width: 100%;
@@ -63,6 +74,17 @@ export const MMD_RESPONSIVE_STYLES = `
   max-width: 100%;
 }
 
+.mmd-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px; }
+.mmd-filter-grid .ant-form-item { margin: 0; }
+.mmd-filter-grid .ant-form-item-hidden { display: none; }
+.mmd-filter-grid .ant-form-item-label { padding-bottom: 2px; }
+.mmd-filter-form .mmd-search-actions { margin-top: 8px; }
+.mmd-filter-inline { display: contents; }
+.mmd-reference-option { display: flex; justify-content: space-between; gap: 8px; }
+.mmd-reference-pagination { padding: 8px; }
+@container mmd-renderer (max-width: 900px) {
+  .mmd-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @container mmd-renderer (max-width: 680px) {
   .mmd-list-container > .ant-card-head,
   .mmd-form-container > .ant-card-head,
@@ -127,6 +149,7 @@ export const MMD_RESPONSIVE_STYLES = `
 }
 
 @container mmd-renderer (max-width: 480px) {
+  .mmd-filter-grid { grid-template-columns: minmax(0, 1fr); }
   .mmd-search-form.ant-form-inline {
     grid-template-columns: minmax(0, 1fr);
   }
