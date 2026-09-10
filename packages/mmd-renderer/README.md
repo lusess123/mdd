@@ -14,7 +14,7 @@ React、React DOM 和 Ant Design 由宿主项目提供。当前示例验证于 R
 
 Use `{ name: "config", type: "json", required: true }` to render a JSON editor with a format button and submit-time syntax validation. The editor keeps JSON text as its value (including primitives such as `false`, `0`, and `null`); parse and validate the business shape on your backend. Optional empty fields remain empty. Detail/list scenes display formatted JSON.
 
-### Read-only identifiers and row numbers (unreleased)
+### Read-only identifiers and row numbers (0.2.0)
 
 `Key` fields with explicit `list: true` are visible in generated list/detail views and stay hidden from generated forms. An explicit edit-view field can use `renderer: "key"` to display a full, copyable ID. `ReadonlyIdentifier` is also exported for custom tables inside `MmdProvider`. Explicit primary-key and read-only form fields are disabled and omitted from write payloads; backend write protection remains unchanged.
 
@@ -160,3 +160,7 @@ For detail pages, pass `relations={{ resource, resources }}` to render related t
 与网站 playground 示例一致，`MmdRenderer` / `MmdResourcePage` 未传 `onOpenView` 时，新增、详情、编辑和关联记录使用组件内弹窗。传入 `resources` 后，详情弹窗继续展示关联子表，关联子表的新建默认值、固定查询条件和变更刷新由 MMD 传递。`ReferenceProvider` 只配置 `data` 即可打开关联记录；显式配置 `href/navigate` 时仍使用宿主导航。
 
 默认列表和关联标签状态保留在组件实例内，不改变 URL。只有显式设置 `list.persistQuery: true`（或提供 `queryState/tabState`）才使用 URL 联动。可用 `initialOpenView` 从宿主概览打开一条记录；它只作为初始弹窗，不要求宿主实现路由或弹窗状态。
+
+## Release guides
+
+[Changelog](https://mmd.zyking.xyz/changelog/) · [Integration guide](https://mmd.zyking.xyz/docs/#embedded) · [Interactive demo](https://mmd.zyking.xyz/playground/embedded/) · [Example source](https://github.com/lusess123/mdd/tree/main/examples/embedded-crud)

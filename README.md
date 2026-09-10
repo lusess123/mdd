@@ -6,6 +6,14 @@ MMD is a metadata-driven full-stack admin toolkit. Define a model once, let `mmd
 
 The repository contains a complete Product demo: a Hono API, Neon PostgreSQL through Cloudflare Hyperdrive, a statically exported Next.js site, a custom inventory field, publish/archive/duplicate actions, Chinese and English UI, and live API documentation.
 
+## 0.2.0: guides and working examples
+
+- [Online changelog](https://mmd.zyking.xyz/changelog/) · [Repository changelog](./CHANGELOG.md)
+- [Embedded CRUD / relations demo](https://mmd.zyking.xyz/playground/embedded/): seven filters, readonly IDs, row numbers, related creates, JSON and dirty-form protection.
+- [Integration guide](https://mmd.zyking.xyz/docs/#embedded) · [Source and local setup](./examples/embedded-crud/README.md)
+
+The new demo uses the real Engine and Renderer with page-local data that resets on reload; no database is needed. The original Product Playground continues to use the database API. Each release must include changelog entries, guides and tested demos.
+
 ## Run locally
 
 Install [Bun](https://bun.sh/), then run:
@@ -57,7 +65,7 @@ All three packages are available on npm. These commands install the stable relea
 
 - API: native `fetch` against same-origin `/api`
 - Authentication: anonymous with same-origin cookies
-- Router: hash routing for static hosting
+- Navigation: built-in CRUD dialogs; host routing is optional (legacy hash navigation remains available)
 - Errors: unified timeout, network, and API error feedback
 - Locale: Chinese and English, selected from the browser language
 
@@ -83,6 +91,8 @@ examples              Copyable frontend and backend examples
 bun run test
 bun run typecheck
 bun run build
+bun run test:browser
+bun run release:check
 ```
 
 ## Documentation

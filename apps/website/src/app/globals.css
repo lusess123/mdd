@@ -1628,6 +1628,8 @@ pre,
 
 @media (max-width: 760px) {
   .topbar {
+    /* Keep the fixed mobile navigation relative to the viewport. */
+    backdrop-filter: none;
     grid-template-columns: 1fr auto;
     min-height: 58px;
     padding-inline:

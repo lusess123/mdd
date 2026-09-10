@@ -17,3 +17,7 @@ const product: ModelDefinition = {
 ```
 
 [使用文档](https://mmd.zyking.xyz/docs/) · [源码](https://github.com/lusess123/mdd) · MIT
+
+## Release guides
+
+[Changelog](https://mmd.zyking.xyz/changelog/) · [Integration guide](https://mmd.zyking.xyz/docs/#embedded) · [Interactive demo](https://mmd.zyking.xyz/playground/embedded/) · [Example source](https://github.com/lusess123/mdd/tree/main/examples/embedded-crud)

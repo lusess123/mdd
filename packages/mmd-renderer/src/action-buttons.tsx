@@ -88,6 +88,8 @@ export function ActionButtons({
           (action.placement === "bulk" && !context.selectedIds?.length);
         const button = (
           <Button
+            aria-label={label}
+            aria-busy={loadingKey === key}
             size={size}
             type={action.tone === "primary" ? "primary" : "default"}
             danger={

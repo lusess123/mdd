@@ -1,0 +1,32 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 24px 0 16px;
+}
+.surface {
+  min-width: 0;
+  overflow: auto;
+  padding: 20px;
+  background: white;
+  border: 1px solid var(--ink);
+  border-radius: 12px;
+}
+.surface :global(.mmd-resource-heading) {
+  margin-bottom: 20px;
+}
+.surface :global(.mmd-resource-eyebrow) {
+  color: #666;
+  font-size: 12px;
+}
+.surface :global(.mmd-reference-link) {
+  padding: 0;
+  height: auto;
+}
+@media (max-width: 600px) {
+  .surface {
+    padding: 12px;
+  }
+}

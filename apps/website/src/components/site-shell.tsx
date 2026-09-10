@@ -6,6 +6,7 @@ import type { PropsWithChildren } from "react";
 
 import { useMmd } from "./mmd-provider";
 import type { MessageKey } from "../lib/i18n";
+import { currentVersion } from "../lib/releases";
 import { isNavigationActive } from "../lib/navigation";
 
 const navigation: Array<{ href: string; label: MessageKey }> = [
@@ -13,6 +14,7 @@ const navigation: Array<{ href: string; label: MessageKey }> = [
   { href: "/docs", label: "nav.docs" },
   { href: "/examples", label: "nav.examples" },
   { href: "/playground", label: "nav.playground" },
+  { href: "/changelog", label: "nav.changelog" },
 ];
 
 export function SiteShell({ children }: PropsWithChildren) {
@@ -25,7 +27,7 @@ export function SiteShell({ children }: PropsWithChildren) {
         <Link className="brand" href="/" aria-label="MMD home">
           <span className="brand-mark">M</span>
           <span>MMD</span>
-          <span className="brand-version">alpha</span>
+          <span className="brand-version">{currentVersion}</span>
         </Link>
         <nav className="main-nav" aria-label="Primary navigation">
           {navigation.map((item) => {

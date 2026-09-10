@@ -71,7 +71,8 @@ try {
     import assert from 'node:assert/strict';
     import * as contracts from 'mmd-contracts';
     import { MmdEngine } from 'mmd-engine';
-    import { MmdProvider, MmdView } from 'mmd-renderer';
+    import { MmdProvider, MmdView, MmdResourcePage, ReferenceProvider, createReferenceData, withClientLifecycle, createChangeGuard, createRecordVersionStore, createUrlQueryState } from 'mmd-renderer';
+    for (const value of [MmdResourcePage, ReferenceProvider, createReferenceData, withClientLifecycle, createChangeGuard, createRecordVersionStore, createUrlQueryState]) assert.equal(typeof value, 'function');
     assert(Object.keys(contracts).length > 0);
     assert.equal(typeof MmdEngine, 'function');
     assert.equal(typeof MmdProvider, 'function');
@@ -85,9 +86,14 @@ try {
     const model: ModelDefinition = { name: 'Product', primaryKey: 'id', fields: [] };
     void [model, MmdEngine, MmdProvider, MmdView];
   `);
+  // Compile the actual copyable guide against packed packages, outside the workspace.
+  const guide = await readFile(join(root, "apps/website/src/components/release-docs.tsx"), "utf8");
+  const snippet = guide.match(/const embedded = `([\s\S]*?)`;/)?.[1];
+  assert(snippet, "Missing embedded integration snippet");
+  await writeFile(join(consumer, "guide.tsx"), snippet);
   await run([
     join(consumer, "node_modules/.bin/tsc"), "--noEmit", "--skipLibCheck", "--strict",
-    "--module", "NodeNext", "--target", "ES2022", "check.ts",
+    "--module", "NodeNext", "--target", "ES2022", "--jsx", "react-jsx", "check.ts", "guide.tsx",
   ], consumer);
   await writeFile(join(output, "packages.json"), JSON.stringify(packages, null, 2));
   console.log("Package installation, Node imports, and TypeScript declarations passed.");

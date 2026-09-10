@@ -151,3 +151,7 @@ vite.config.ts.timestamp-*
 # Local credentials and private work-item configuration
 .ai-doc/config/
 apps/demo-api/src/generated/
+
+# Browser verification artifacts
+/test-results/
+/playwright-report/
